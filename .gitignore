@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Stats or build artifacts (if dynamically generated)
+game/**/game_stats.json
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Editor-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Logs and caches
+*.log
+*.tmp
+
+# Python package files
+*.egg-info/
+dist/
+build/
+
+# System-specific
+Thumbs.db
