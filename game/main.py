@@ -2,10 +2,13 @@ import pygame
 import sys
 import os
 import math
+import random
+import copy
 from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_zombie_cat
+from game.weapons import create_rusty_pistol, create_rocket_launcher
 
 # Initialize pygame
 pygame.init()
@@ -71,6 +74,9 @@ class Player:
         self.dead = False
         self.time_of_death = None
         self.revive_progress = 0  # seconds standing over
+        # Aiming
+        self.aim_direction = (1, 0)  # Default aim right
+        # In the future, add input_profile/controller here
     
     def take_damage(self, amount):
         if self.dead:
@@ -144,10 +150,27 @@ class Player:
         self.time_of_death = None
         self.revive_progress = 0
     
-    def draw(self, surface, camera_x, camera_y):
+    def update_aim(self, camera_x, camera_y, player_index=0):
+        if self.dead:
+            return
+        # For now, only Player 1 uses mouse aiming
+        if player_index == 0:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            # Player center in screen coordinates
+            center_x = self.rect.x - camera_x + GAME_X + self.rect.width // 2
+            center_y = self.rect.y - camera_y + GAME_Y + self.rect.height // 2
+            dx = mouse_x - center_x
+            dy = mouse_y - center_y
+            dist = math.hypot(dx, dy)
+            if dist > 0:
+                self.aim_direction = (dx / dist, dy / dist)
+            else:
+                self.aim_direction = (1, 0)
+        # For future: add controller stick aiming for other players
+    
+    def draw(self, surface, camera_x, camera_y, player_index=0):
         draw_rect = self.rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
         if self.dead:
-            # Draw body as gray
             pygame.draw.rect(surface, (80, 80, 80), draw_rect)
         else:
             pygame.draw.rect(surface, RED, draw_rect)
@@ -156,16 +179,13 @@ class Player:
         bar_height = 1  # Extremely thin
         bar_x = draw_rect.x
         bar_y = draw_rect.y - 10  # Slightly higher to make room for ability bar
-        # Health bar background (missing health, semi-transparent)
         s = pygame.Surface((bar_width, bar_height), pygame.SRCALPHA)
         s.fill((100, 0, 0, 120))  # dark red, semi-transparent
         surface.blit(s, (bar_x, bar_y))
-        # Health bar filled
         if self.hp > 0:
             fill_width = int(bar_width * (self.hp / self.character.max_hp))
             fill_rect = pygame.Rect(bar_x, bar_y, fill_width, bar_height)
             pygame.draw.rect(surface, RED, fill_rect)
-        # --- Ability Bar (blue, under health bar) ---
         ab_bar_y = bar_y + bar_height + 2  # 2px below health bar
         s2 = pygame.Surface((bar_width, bar_height), pygame.SRCALPHA)
         s2.fill((0, 0, 100, 120))  # dark blue, semi-transparent
@@ -174,12 +194,33 @@ class Player:
             ab_fill_width = int(bar_width * (self.ability_points / self.character.ability_points))
             ab_fill_rect = pygame.Rect(bar_x, ab_bar_y, ab_fill_width, bar_height)
             pygame.draw.rect(surface, (0, 120, 255), ab_fill_rect)
-        # --- Revival Progress Bar (if dead) ---
         if self.dead and self.revive_progress > 0:
             revive_bar_y = ab_bar_y + bar_height + 2
             revive_bar_height = 2
             revive_bar_width = int(bar_width * (self.revive_progress / self.character.revival_time))
             pygame.draw.rect(surface, (255, 255, 0), (bar_x, revive_bar_y, revive_bar_width, revive_bar_height))
+        # --- Draw aim direction for Player 1 ---
+        if player_index == 0 and not self.dead:
+            center_x = draw_rect.x + draw_rect.width // 2
+            center_y = draw_rect.y + draw_rect.height // 2
+            aim_len = 40
+            end_x = int(center_x + self.aim_direction[0] * aim_len)
+            end_y = int(center_y + self.aim_direction[1] * aim_len)
+            pygame.draw.line(surface, (255, 255, 0), (center_x, center_y), (end_x, end_y), 2)
+        # --- Ammo UI to the right of HP bar for all players ---
+        weapon = self.character.weapons[0] if hasattr(self.character, 'weapons') and self.character.weapons else None
+        if weapon:
+            ammo_font = pygame.font.Font(None, 18)
+            if weapon.ammo is None:
+                reserve_text = "∞"
+            else:
+                reserve_text = str(weapon.ammo)
+            clip_text = str(weapon.current_clip)
+            ammo_text = f"{reserve_text} | {clip_text}"
+            ammo_surface = ammo_font.render(ammo_text, True, (255, 255, 0))
+            ammo_x = bar_x + bar_width + 8
+            ammo_y = bar_y - 6
+            surface.blit(ammo_surface, (ammo_x, ammo_y))
 
 def main():
     world = World(seed=123)
@@ -187,9 +228,10 @@ def main():
     player_start_pos = (TILE_SIZE, TILE_SIZE)
     # Use default character 'testy'
     players = [
-        Player(player_start_pos[0], player_start_pos[1], TESTY),
-        Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], TESTY)
+        Player(player_start_pos[0], player_start_pos[1], copy.deepcopy(TESTY)),
+        Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], copy.deepcopy(TESTY))
     ]
+    current_weapon_index = 0
 
     # --- Creature Management ---
     creatures = []
@@ -202,6 +244,9 @@ def main():
     running = True
     camera_x, camera_y = 0, 0
     game_over = False
+    bullets = []  # List of active bullets
+    show_creature_hp = False
+    splash_effects = []  # List of (x, y, radius, start_time)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -209,37 +254,113 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                # --- Weapon switching ---
+                if event.key == pygame.K_1:
+                    current_weapon_index = 0
+                if event.key == pygame.K_2:
+                    current_weapon_index = 1
+                # --- Firing with space bar (Player 1) ---
+                if event.key == pygame.K_SPACE:
+                    player = players[0]
+                    if not player.dead:
+                        weapon = player.character.weapons[current_weapon_index]
+                        now = pygame.time.get_ticks()
+                        fire_delay = 60000 / weapon.fire_rate  # ms per shot
+                        if now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
+                            spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+                            base_dx, base_dy = player.aim_direction
+                            angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
+                            dx = math.cos(angle)
+                            dy = math.sin(angle)
+                            bullet_speed = weapon.bullet_speed
+                            bullet_range = weapon.range * TILE_SIZE
+                            bullet_size = int(weapon.bullet_size * TILE_SIZE)
+                            bullet = {
+                                'x': player.rect.centerx,
+                                'y': player.rect.centery,
+                                'dx': dx,
+                                'dy': dy,
+                                'speed': bullet_speed,
+                                'range': bullet_range,
+                                'distance': 0,
+                                'size': bullet_size,
+                                'damage': weapon.damage,
+                                'color': weapon.bullet_color,
+                                'splash': weapon.splash,
+                                'weapon_index': current_weapon_index
+                            }
+                            bullets.append(bullet)
+                            weapon.current_clip -= 1
+                            weapon.last_shot_time = now
+                # --- Toggle creature HP bars ---
+                if event.key == pygame.K_h:
+                    show_creature_hp = not show_creature_hp
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left click
+                    player = players[0]
+                    if not player.dead:
+                        weapon = player.character.weapons[current_weapon_index]
+                        now = pygame.time.get_ticks()
+                        fire_delay = 60000 / weapon.fire_rate  # ms per shot
+                        if now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
+                            spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+                            base_dx, base_dy = player.aim_direction
+                            angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
+                            dx = math.cos(angle)
+                            dy = math.sin(angle)
+                            bullet_speed = weapon.bullet_speed
+                            bullet_range = weapon.range * TILE_SIZE
+                            bullet_size = int(weapon.bullet_size * TILE_SIZE)
+                            bullet = {
+                                'x': player.rect.centerx,
+                                'y': player.rect.centery,
+                                'dx': dx,
+                                'dy': dy,
+                                'speed': bullet_speed,
+                                'range': bullet_range,
+                                'distance': 0,
+                                'size': bullet_size,
+                                'damage': weapon.damage,
+                                'color': weapon.bullet_color,
+                                'splash': weapon.splash,
+                                'weapon_index': current_weapon_index
+                            }
+                            bullets.append(bullet)
+                            weapon.current_clip -= 1
+                            weapon.last_shot_time = now
         keys = pygame.key.get_pressed()
-        # --- Input for Player 1 (WASD) and Player 2 (Arrow keys) ---
-        # Player 1 (WASD)
+        # --- Input for Player 1 (WASD) ---
         move_x1 = (keys[pygame.K_d]) - (keys[pygame.K_a])
         move_y1 = (keys[pygame.K_s]) - (keys[pygame.K_w])
         dx1 = move_x1 * players[0].speed
         dy1 = move_y1 * players[0].speed
-        # Player 2 (Arrow keys)
-        move_x2 = (keys[pygame.K_RIGHT]) - (keys[pygame.K_LEFT])
-        move_y2 = (keys[pygame.K_DOWN]) - (keys[pygame.K_UP])
-        dx2 = move_x2 * players[1].speed
-        dy2 = move_y2 * players[1].speed
+        # --- Input for Player 2 (Arrow keys) ---
+        dx2 = dy2 = 0
+        if len(players) > 1:
+            move_x2 = (keys[pygame.K_RIGHT]) - (keys[pygame.K_LEFT])
+            move_y2 = (keys[pygame.K_DOWN]) - (keys[pygame.K_UP])
+            dx2 = move_x2 * players[1].speed
+            dy2 = move_y2 * players[1].speed
         # --- Camera follows player 1 ---
         camera_x = players[0].x - GAME_WIDTH // 2
         camera_y = players[0].y - GAME_HEIGHT // 2
 
         # --- Tether mechanic: restrict Player 1 if Player 2 is at the opposite edge ---
-        p2_screen_x = players[1].x - camera_x
-        p2_screen_y = players[1].y - camera_y
-        # If Player 2 is at the left edge and Player 1 tries to move right, block
-        if p2_screen_x <= 0 and dx1 > 0:
-            dx1 = 0
-        # If Player 2 is at the right edge and Player 1 tries to move left, block
-        if p2_screen_x >= GAME_WIDTH - PLAYER_SIZE and dx1 < 0:
-            dx1 = 0
-        # If Player 2 is at the top edge and Player 1 tries to move down, block
-        if p2_screen_y <= 0 and dy1 > 0:
-            dy1 = 0
-        # If Player 2 is at the bottom edge and Player 1 tries to move up, block
-        if p2_screen_y >= GAME_HEIGHT - PLAYER_SIZE and dy1 < 0:
-            dy1 = 0
+        if len(players) > 1:
+            p2_screen_x = players[1].x - camera_x
+            p2_screen_y = players[1].y - camera_y
+            # If Player 2 is at the left edge and Player 1 tries to move right, block
+            if p2_screen_x <= 0 and dx1 > 0:
+                dx1 = 0
+            # If Player 2 is at the right edge and Player 1 tries to move left, block
+            if p2_screen_x >= GAME_WIDTH - PLAYER_SIZE and dx1 < 0:
+                dx1 = 0
+            # If Player 2 is at the top edge and Player 1 tries to move down, block
+            if p2_screen_y <= 0 and dy1 > 0:
+                dy1 = 0
+            # If Player 2 is at the bottom edge and Player 1 tries to move up, block
+            if p2_screen_y >= GAME_HEIGHT - PLAYER_SIZE and dy1 < 0:
+                dy1 = 0
         # --- Drawing ---
         screen.fill(BORDER_COLOR)
         pygame.draw.rect(screen, MENU_COLOR, (BORDER_SIZE, BORDER_SIZE, SCREEN_WIDTH - 2 * BORDER_SIZE, TOP_MENU_HEIGHT))
@@ -270,6 +391,7 @@ def main():
                 player.move(dx2, dy2, visible_walls)
             player.update_xp()
             player.regen()
+            player.update_aim(camera_x, camera_y, player_index=i)
         # --- Revival mechanic ---
         for i, player in enumerate(players):
             if player.dead:
@@ -282,12 +404,100 @@ def main():
                         break
                 else:
                     player.revive_progress = 0
-            player.draw(screen, camera_x, camera_y)
+            player.draw(screen, camera_x, camera_y, player_index=i)
 
         # --- Update and draw all creatures ---
         for creature in creatures:
             creature.update(players)
             creature.draw(screen, camera_x, camera_y, GAME_X, GAME_Y)
+            # Draw HP bar if enabled
+            if show_creature_hp:
+                bar_width = creature.width
+                bar_height = 3
+                bar_x = int(creature.rect.x - camera_x + GAME_X)
+                bar_y = int(creature.rect.y - camera_y + GAME_Y) - 8
+                # Background
+                pygame.draw.rect(screen, (60, 60, 60), (bar_x, bar_y, bar_width, bar_height))
+                # Filled
+                if creature.hp > 0:
+                    fill_width = int(bar_width * (creature.hp / max(1, getattr(creature, 'max_hp', creature.hp))))
+                    pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, fill_width, bar_height))
+        # Remove dead creatures
+        creatures[:] = [c for c in creatures if c.hp > 0]
+
+        # --- Update bullets ---
+        for bullet in bullets[:]:
+            bullet['x'] += bullet['dx'] * bullet['speed']
+            bullet['y'] += bullet['dy'] * bullet['speed']
+            bullet['distance'] += bullet['speed']
+            if bullet['distance'] > bullet['range']:
+                bullets.remove(bullet)
+
+        # --- Bullet collision with creatures and walls ---
+        for bullet in bullets[:]:
+            bullet_rect = pygame.Rect(
+                bullet['x'] - bullet['size'],
+                bullet['y'] - bullet['size'],
+                bullet['size'] * 2,
+                bullet['size'] * 2
+            )
+            # Wall collision
+            hit_wall = False
+            for wall in visible_walls:
+                if bullet_rect.colliderect(wall):
+                    hit_wall = True
+                    break
+            if hit_wall:
+                # Splash damage if rocket
+                if bullet.get('splash'):
+                    splash_radius = bullet['splash'] * TILE_SIZE
+                    center = (bullet['x'], bullet['y'])
+                    splash_damages = [20, 16, 12, 8, 2]
+                    for creature in creatures:
+                        if creature.hp > 0:
+                            dist = math.hypot(creature.rect.centerx - center[0], creature.rect.centery - center[1])
+                            for i in range(5):
+                                if dist <= splash_radius * (i+1)/5:
+                                    creature.hp -= splash_damages[i]
+                                    break
+                    # Add splash effect for visual
+                    splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
+                bullets.remove(bullet)
+                continue
+            # Creature collision
+            for creature in creatures:
+                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
+                    # Splash damage if rocket
+                    if bullet.get('splash'):
+                        splash_radius = bullet['splash'] * TILE_SIZE
+                        center = (bullet['x'], bullet['y'])
+                        splash_damages = [20, 16, 12, 8, 2]
+                        for c in creatures:
+                            if c.hp > 0:
+                                dist = math.hypot(c.rect.centerx - center[0], c.rect.centery - center[1])
+                                for i in range(5):
+                                    if dist <= splash_radius * (i+1)/5:
+                                        c.hp -= splash_damages[i]
+                                        break
+                        splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
+                    else:
+                        creature.hp -= bullet['damage']
+                    bullets.remove(bullet)
+                    break
+
+        # --- Draw splash effects ---
+        now = pygame.time.get_ticks()
+        for effect in splash_effects[:]:
+            elapsed = now - effect['start']
+            if elapsed > 200:
+                splash_effects.remove(effect)
+                continue
+            alpha = max(0, 120 - int(120 * (elapsed / 200)))
+            s = pygame.Surface((effect['radius']*2, effect['radius']*2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (80, 255, 80, alpha), (int(effect['radius']), int(effect['radius'])), int(effect['radius']))
+            bx = int(effect['x'] - camera_x + GAME_X - effect['radius'])
+            by = int(effect['y'] - camera_y + GAME_Y - effect['radius'])
+            screen.blit(s, (bx, by))
 
         # --- Game Over ---
         if all_dead:
@@ -332,6 +542,11 @@ def main():
         xp_text = f"LVL {p1.level}  XP: {p1.xp}/{p1.xp_to_next}"
         xp_text_surface = xp_font.render(xp_text, True, (0, 255, 180))
         screen.blit(xp_text_surface, (xp_bar_x + 4, xp_bar_y - xp_text_surface.get_height() - 2))
+        # --- Draw bullets ---
+        for bullet in bullets:
+            bx = int(bullet['x'] - camera_x + GAME_X)
+            by = int(bullet['y'] - camera_y + GAME_Y)
+            pygame.draw.circle(screen, bullet['color'], (bx, by), bullet['size'])
         pygame.display.flip()
         clock.tick(60)
     stats.save_records(current_game_time_seconds, current_max_distance)
