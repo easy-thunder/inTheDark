@@ -168,6 +168,27 @@ class Player:
                 self.aim_direction = (1, 0)
         # For future: add controller stick aiming for other players
     
+    def reload_weapon(self, weapon_index=0):
+        weapon = self.character.weapons[weapon_index] if hasattr(self.character, 'weapons') and self.character.weapons else None
+        if weapon and not weapon.is_reloading and weapon.current_clip < weapon.clip_size:
+            weapon.is_reloading = True
+            weapon.reload_start = pygame.time.get_ticks()
+
+    def update_reload(self, weapon_index=0):
+        weapon = self.character.weapons[weapon_index] if hasattr(self.character, 'weapons') and self.character.weapons else None
+        if weapon and weapon.is_reloading:
+            now = pygame.time.get_ticks()
+            if now - weapon.reload_start >= weapon.reload_speed * 1000:
+                # Calculate how many bullets to reload
+                if weapon.ammo is None:
+                    reload_amount = weapon.clip_size
+                else:
+                    reload_amount = min(weapon.clip_size, weapon.ammo)
+                weapon.current_clip = reload_amount
+                if weapon.ammo is not None:
+                    weapon.ammo -= reload_amount
+                weapon.is_reloading = False
+
     def draw(self, surface, camera_x, camera_y, player_index=0):
         draw_rect = self.rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
         if self.dead:
@@ -215,12 +236,25 @@ class Player:
                 reserve_text = "∞"
             else:
                 reserve_text = str(weapon.ammo)
-            clip_text = str(weapon.current_clip)
+            if weapon.is_reloading:
+                clip_text = "..."
+            else:
+                clip_text = str(weapon.current_clip)
             ammo_text = f"{reserve_text} | {clip_text}"
             ammo_surface = ammo_font.render(ammo_text, True, (255, 255, 0))
             ammo_x = bar_x + bar_width + 8
             ammo_y = bar_y - 6
             surface.blit(ammo_surface, (ammo_x, ammo_y))
+            # --- Reload progress semi-circle ---
+            if weapon.is_reloading:
+                now = pygame.time.get_ticks()
+                progress = min(1.0, (now - weapon.reload_start) / (weapon.reload_speed * 1000))
+                arc_radius = 6  # Much smaller
+                arc_center = (ammo_x + ammo_surface.get_width() // 2, ammo_y - arc_radius + 2)
+                arc_rect = pygame.Rect(arc_center[0] - arc_radius, arc_center[1] - arc_radius, arc_radius * 2, arc_radius * 2)
+                start_angle = math.pi  # 180 deg (left)
+                end_angle = math.pi + math.pi * progress  # fill clockwise
+                pygame.draw.arc(surface, (255, 255, 0), arc_rect, start_angle, end_angle, 2)
 
 def main():
     world = World(seed=123)
@@ -295,6 +329,10 @@ def main():
                 # --- Toggle creature HP bars ---
                 if event.key == pygame.K_h:
                     show_creature_hp = not show_creature_hp
+                # --- Reloading ---
+                if event.key == pygame.K_r:
+                    for player in players:
+                        player.reload_weapon(0)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
                     player = players[0]
@@ -392,6 +430,7 @@ def main():
             player.update_xp()
             player.regen()
             player.update_aim(camera_x, camera_y, player_index=i)
+            player.update_reload(0)
         # --- Revival mechanic ---
         for i, player in enumerate(players):
             if player.dead:
