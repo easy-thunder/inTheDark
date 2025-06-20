@@ -168,6 +168,11 @@ class Player:
                 self.aim_direction = (1, 0)
         # For future: add controller stick aiming for other players
     
+    def has_infinite_ammo(self, weapon):
+        if not weapon or not hasattr(self.character, 'specializations') or not weapon.specialization_type:
+            return False
+        return self.character.specializations.get(weapon.specialization_type, 0) >= weapon.specialization_level
+
     def reload_weapon(self, weapon_index=0):
         weapon = self.character.weapons[weapon_index] if hasattr(self.character, 'weapons') and self.character.weapons else None
         if weapon and not weapon.is_reloading and weapon.current_clip < weapon.clip_size:
@@ -180,12 +185,14 @@ class Player:
             now = pygame.time.get_ticks()
             if now - weapon.reload_start >= weapon.reload_speed * 1000:
                 # Calculate how many bullets to reload
-                if weapon.ammo is None:
+                if self.has_infinite_ammo(weapon):
+                    reload_amount = weapon.clip_size
+                elif weapon.ammo is None:
                     reload_amount = weapon.clip_size
                 else:
                     reload_amount = min(weapon.clip_size, weapon.ammo)
                 weapon.current_clip = reload_amount
-                if weapon.ammo is not None:
+                if not self.has_infinite_ammo(weapon) and weapon.ammo is not None:
                     weapon.ammo -= reload_amount
                 weapon.is_reloading = False
 
@@ -290,9 +297,11 @@ def main():
                     running = False
                 # --- Weapon switching ---
                 if event.key == pygame.K_1:
-                    current_weapon_index = 0
+                    if len(players[0].character.weapons) > 0:
+                        current_weapon_index = 0
                 if event.key == pygame.K_2:
-                    current_weapon_index = 1
+                    if len(players[0].character.weapons) > 1:
+                        current_weapon_index = 1
                 # --- Firing with space bar (Player 1) ---
                 if event.key == pygame.K_SPACE:
                     player = players[0]
@@ -324,7 +333,8 @@ def main():
                                 'weapon_index': current_weapon_index
                             }
                             bullets.append(bullet)
-                            weapon.current_clip -= 1
+                            if not player.has_infinite_ammo(weapon):
+                                weapon.current_clip -= 1
                             weapon.last_shot_time = now
                 # --- Toggle creature HP bars ---
                 if event.key == pygame.K_h:
@@ -364,7 +374,8 @@ def main():
                                 'weapon_index': current_weapon_index
                             }
                             bullets.append(bullet)
-                            weapon.current_clip -= 1
+                            if not player.has_infinite_ammo(weapon):
+                                weapon.current_clip -= 1
                             weapon.last_shot_time = now
         keys = pygame.key.get_pressed()
         # --- Input for Player 1 (WASD) ---

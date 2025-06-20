@@ -1,7 +1,16 @@
-from game.weapons import create_rusty_pistol, create_rocket_launcher
+from game.weapons import create_rusty_pistol, create_rocket_launcher, WeaponSpecialization
+
+DEFAULT_SPECIALIZATIONS = {
+    WeaponSpecialization.PRECISION: 1,
+    WeaponSpecialization.EXPLOSIVES: 1,
+    WeaponSpecialization.PISTOLS: 1,
+    WeaponSpecialization.ASSAULT: 1,
+    WeaponSpecialization.SHOTGUNS: 1,
+    WeaponSpecialization.MELEE: 1
+}
 
 class Character:
-    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0, revival_time=5, weapons=None):
+    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0, revival_time=5, weapons=None, specializations=None):
         self.name = name
         self.max_hp = max_hp
         self.speed = speed
@@ -11,6 +20,10 @@ class Character:
         self.ap_regen = ap_regen
         self.revival_time = revival_time
         self.weapons = weapons or []
+        # Always set specializations
+        self.specializations = dict(DEFAULT_SPECIALIZATIONS)
+        if specializations:
+            self.specializations.update(specializations)
 
 # Default character: testy
 TESTY = Character(
@@ -22,5 +35,8 @@ TESTY = Character(
     hp_regen=0.1,
     ap_regen=0.1,
     revival_time=5,
-    weapons=[create_rocket_launcher()]
+    weapons=[create_rusty_pistol()],
+    specializations={
+        WeaponSpecialization.EXPLOSIVES: 3,
+    }
 ) 

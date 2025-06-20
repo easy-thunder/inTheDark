@@ -6,8 +6,16 @@ class FireMode(Enum):
     BURST = auto()
     SHOTGUN = auto()
 
+class WeaponSpecialization(Enum):
+    PRECISION = auto()
+    EXPLOSIVES = auto()
+    PISTOLS = auto()
+    ASSAULT = auto()
+    SHOTGUNS = auto()
+    MELEE = auto()
+
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -24,6 +32,8 @@ class Weapon:
         self.ammo = ammo  # None means infinite
         self.traits = traits or []
         self.ability = ability  # Can be None or a callable/ability object
+        self.specialization_type = specialization_type
+        self.specialization_level = specialization_level
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -47,7 +57,9 @@ def create_rusty_pistol():
         bullet_speed=12,
         ammo=None,      # infinite
         traits=[],
-        ability=None
+        ability=None,
+        specialization_type=WeaponSpecialization.PISTOLS,
+        specialization_level=1
     )
 
 def create_rocket_launcher():
@@ -66,5 +78,7 @@ def create_rocket_launcher():
         bullet_speed=8,  # slower rocket
         ammo=3,
         traits=[],
-        ability=None
+        ability=None,
+        specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=3
     ) 
