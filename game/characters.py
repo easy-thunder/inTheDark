@@ -1,5 +1,5 @@
 class Character:
-    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0):
+    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0, revival_time=5):
         self.name = name
         self.max_hp = max_hp
         self.speed = speed
@@ -7,6 +7,7 @@ class Character:
         self.armor = armor
         self.hp_regen = hp_regen
         self.ap_regen = ap_regen
+        self.revival_time = revival_time
 
 # Default character: testy
 TESTY = Character(
@@ -16,5 +17,6 @@ TESTY = Character(
     ability_points=30,
     armor=1,
     hp_regen=0.1,
-    ap_regen=0.1
+    ap_regen=0.1,
+    revival_time=5
 ) 

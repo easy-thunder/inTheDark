@@ -67,15 +67,25 @@ class Player:
         self.hp_regen = character.hp_regen
         self.ap_regen = character.ap_regen
         self.last_regen_time = pygame.time.get_ticks()
+        # Death and revival
+        self.dead = False
+        self.time_of_death = None
+        self.revive_progress = 0  # seconds standing over
     
     def take_damage(self, amount):
-        """Reduces player's HP after calculating armor reduction."""
+        if self.dead:
+            return
         dealt_damage = max(0, amount - self.armor)
         self.hp -= dealt_damage
-        if self.hp < 0:
+        if self.hp <= 0:
             self.hp = 0
+            self.dead = True
+            self.time_of_death = pygame.time.get_ticks()
+            self.revive_progress = 0
     
     def move(self, dx, dy, walls):
+        if self.dead:
+            return
         self.x = self.rect.x
         self.y = self.rect.y
         if dx != 0:
@@ -98,6 +108,8 @@ class Player:
         self.y = self.rect.y
     
     def gain_xp(self, amount):
+        if self.dead:
+            return
         self.xp += amount
         while self.xp >= self.xp_to_next:
             self.xp -= self.xp_to_next
@@ -105,12 +117,16 @@ class Player:
             self.xp_to_next += 100
     
     def update_xp(self):
+        if self.dead:
+            return
         now = pygame.time.get_ticks()
         if now - self.last_xp_time >= 10000:  # 10 seconds
             self.gain_xp(1)
             self.last_xp_time = now
     
     def regen(self):
+        if self.dead:
+            return
         now = pygame.time.get_ticks()
         if now - self.last_regen_time >= 1000:  # 1 second
             # HP regen
@@ -121,9 +137,20 @@ class Player:
                 self.ability_points = min(self.character.ability_points, self.ability_points + self.ap_regen)
             self.last_regen_time = now
     
+    def try_revive(self):
+        self.dead = False
+        self.hp = max(1, int(math.ceil(self.character.max_hp / 2)))
+        self.ability_points = self.character.ability_points
+        self.time_of_death = None
+        self.revive_progress = 0
+    
     def draw(self, surface, camera_x, camera_y):
         draw_rect = self.rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
-        pygame.draw.rect(surface, RED, draw_rect)
+        if self.dead:
+            # Draw body as gray
+            pygame.draw.rect(surface, (80, 80, 80), draw_rect)
+        else:
+            pygame.draw.rect(surface, RED, draw_rect)
         # --- Health Bar ---
         bar_width = draw_rect.width
         bar_height = 1  # Extremely thin
@@ -147,6 +174,12 @@ class Player:
             ab_fill_width = int(bar_width * (self.ability_points / self.character.ability_points))
             ab_fill_rect = pygame.Rect(bar_x, ab_bar_y, ab_fill_width, bar_height)
             pygame.draw.rect(surface, (0, 120, 255), ab_fill_rect)
+        # --- Revival Progress Bar (if dead) ---
+        if self.dead and self.revive_progress > 0:
+            revive_bar_y = ab_bar_y + bar_height + 2
+            revive_bar_height = 2
+            revive_bar_width = int(bar_width * (self.revive_progress / self.character.revival_time))
+            pygame.draw.rect(surface, (255, 255, 0), (bar_x, revive_bar_y, revive_bar_width, revive_bar_height))
 
 def main():
     world = World(seed=123)
@@ -168,6 +201,7 @@ def main():
     start_ticks = pygame.time.get_ticks()
     running = True
     camera_x, camera_y = 0, 0
+    game_over = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -226,20 +260,45 @@ def main():
                     draw_rect = rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
                     pygame.draw.rect(screen, GRAY, draw_rect)
         # --- Update and draw all players ---
+        all_dead = True
         for i, player in enumerate(players):
+            if not player.dead:
+                all_dead = False
             if i == 0:
                 player.move(dx1, dy1, visible_walls)
             elif i == 1:
                 player.move(dx2, dy2, visible_walls)
             player.update_xp()
             player.regen()
+        # --- Revival mechanic ---
+        for i, player in enumerate(players):
+            if player.dead:
+                # Check if any living player is standing over this dead player
+                for j, other in enumerate(players):
+                    if not other.dead and other.rect.colliderect(player.rect):
+                        player.revive_progress += clock.get_time() / 1000.0
+                        if player.revive_progress >= player.character.revival_time:
+                            player.try_revive()
+                        break
+                else:
+                    player.revive_progress = 0
             player.draw(screen, camera_x, camera_y)
-        
+
         # --- Update and draw all creatures ---
         for creature in creatures:
             creature.update(players)
             creature.draw(screen, camera_x, camera_y, GAME_X, GAME_Y)
 
+        # --- Game Over ---
+        if all_dead:
+            game_over = True
+            font = pygame.font.Font(None, 72)
+            text = font.render("GAME OVER", True, (255, 0, 0))
+            screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+            pygame.display.flip()
+            pygame.time.wait(3000)
+            break
+        
         # --- Stats/UI for player 1 ---
         current_distance = math.sqrt((players[0].x - player_start_pos[0])**2 + (players[0].y - player_start_pos[1])**2)
         if current_distance > current_max_distance:

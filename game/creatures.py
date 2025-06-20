@@ -33,10 +33,12 @@ class Creature:
 
     def update(self, players):
         """Update creature's state by executing its AI profiles."""
+        # Only consider living players
+        living_players = [p for p in players if not p.dead]
         if self.movement_profile:
-            self.movement_profile.move(self, players)
+            self.movement_profile.move(self, living_players)
         if self.attack_profile:
-            self.attack_profile.execute(self, players)
+            self.attack_profile.execute(self, living_players)
 
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
         """Draws the creature relative to the camera."""
@@ -52,7 +54,7 @@ def create_zombie_cat(x, y, player_size):
         player_size=player_size,
         size_str='small',
         hp=5,
-        damage=2,
+        damage=20,
         speed=2,
         movement_profile=DirectApproach(),
         attack_profile=MeleeCollisionAttack(cooldown=1000), # 1s cooldown
