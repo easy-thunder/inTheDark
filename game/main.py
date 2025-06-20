@@ -2,9 +2,10 @@ import pygame
 import sys
 import os
 import math
-from world import World
-from stats.stats import GameStats
-from characters import TESTY
+from game.world import World
+from game.stats.stats import GameStats
+from game.characters import TESTY
+from game.creatures import create_zombie_cat
 
 # Initialize pygame
 pygame.init()
@@ -61,6 +62,18 @@ class Player:
         self.last_xp_time = pygame.time.get_ticks()
         # Ability points
         self.ability_points = character.ability_points
+        # Armor and regen
+        self.armor = character.armor
+        self.hp_regen = character.hp_regen
+        self.ap_regen = character.ap_regen
+        self.last_regen_time = pygame.time.get_ticks()
+    
+    def take_damage(self, amount):
+        """Reduces player's HP after calculating armor reduction."""
+        dealt_damage = max(0, amount - self.armor)
+        self.hp -= dealt_damage
+        if self.hp < 0:
+            self.hp = 0
     
     def move(self, dx, dy, walls):
         self.x = self.rect.x
@@ -96,6 +109,17 @@ class Player:
         if now - self.last_xp_time >= 10000:  # 10 seconds
             self.gain_xp(1)
             self.last_xp_time = now
+    
+    def regen(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_regen_time >= 1000:  # 1 second
+            # HP regen
+            if self.hp < self.character.max_hp:
+                self.hp = min(self.character.max_hp, self.hp + self.hp_regen)
+            # AP regen
+            if self.ability_points < self.character.ability_points:
+                self.ability_points = min(self.character.ability_points, self.ability_points + self.ap_regen)
+            self.last_regen_time = now
     
     def draw(self, surface, camera_x, camera_y):
         draw_rect = self.rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
@@ -133,6 +157,13 @@ def main():
         Player(player_start_pos[0], player_start_pos[1], TESTY),
         Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], TESTY)
     ]
+
+    # --- Creature Management ---
+    creatures = []
+    # Spawn our first zombie cat
+    zombie = create_zombie_cat(player_start_pos[0] + TILE_SIZE * 6, player_start_pos[1] + TILE_SIZE * 6, PLAYER_SIZE)
+    creatures.append(zombie)
+    
     current_max_distance = 0
     start_ticks = pygame.time.get_ticks()
     running = True
@@ -201,7 +232,14 @@ def main():
             elif i == 1:
                 player.move(dx2, dy2, visible_walls)
             player.update_xp()
+            player.regen()
             player.draw(screen, camera_x, camera_y)
+        
+        # --- Update and draw all creatures ---
+        for creature in creatures:
+            creature.update(players)
+            creature.draw(screen, camera_x, camera_y, GAME_X, GAME_Y)
+
         # --- Stats/UI for player 1 ---
         current_distance = math.sqrt((players[0].x - player_start_pos[0])**2 + (players[0].y - player_start_pos[1])**2)
         if current_distance > current_max_distance:
