@@ -37,7 +37,7 @@ TESTY = Character(
     revival_time=5,
     weapons=[create_rusty_pistol(), create_grenade()],
     specializations={
-        WeaponSpecialization.EXPLOSIVES: 3,
+        WeaponSpecialization.EXPLOSIVES: 1,
         WeaponSpecialization.ASSAULT: 4,
     }
 ) 

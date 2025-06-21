@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+from game.weapons import FireMode, ContactEffect
 
 def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0):
     """
@@ -90,13 +91,15 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         'damage': weapon.damage,
         'color': weapon.bullet_color,
         'splash': weapon.splash,
-        'weapon_index': weapon_index
+        'weapon_index': weapon_index,
+        'contact_effect': weapon.contact_effect
     }
     
-    if weapon.detonation_time:
+    if weapon.fire_mode == FireMode.THROWN:
+        # This logic is for thrown weapons with special physics (arcing, rolling)
+        bullet['is_grenade'] = True # Keep this flag for movement logic
         bullet['detonation_time'] = weapon.detonation_time
         bullet['creation_time'] = pygame.time.get_ticks()
-        bullet['is_grenade'] = True
         bullet['bounces'] = 0
         bullet['max_bounces'] = 3
         
@@ -227,107 +230,74 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
             bullet['size'] * 2
         )
         
+        # --- Unified Collision Logic ---
+        contact_effect = bullet.get('contact_effect')
+
+        # 1. Wall Collision
         hit_wall = False
         for wall in visible_walls:
             if bullet_rect.colliderect(wall):
                 hit_wall = True
-                if bullet.get('is_grenade'):
-                    if bullet['phase'] in ('flying', 'rolling'):
-                        center_x = bullet_rect.centerx
-                        center_y = bullet_rect.centery
-                        if abs(center_x - wall.left) < 5:
-                            normal = (1, 0)
-                        elif abs(center_x - wall.right) < 5:
-                            normal = (-1, 0)
-                        elif abs(center_y - wall.top) < 5:
-                            normal = (0, 1)
-                        elif abs(center_y - wall.bottom) < 5:
-                            normal = (0, -1)
-                        else:
-                            normal = (0, 0)
-                        v = [bullet['velocity_x'], bullet['velocity_y']]
-                        dot = v[0]*normal[0] + v[1]*normal[1]
-                        v_reflect = [v[0] - 2*dot*normal[0], v[1] - 2*dot*normal[1]]
-                        # Set new landing point in reflected direction
-                        distance = bullet['travel_distance']
-                        bullet['velocity_x'] = v_reflect[0]
-                        bullet['velocity_y'] = v_reflect[1]
-                        bullet['start_x'] = bullet['x']
-                        bullet['start_y'] = bullet['y']
-                        bullet['landing_x'] = bullet['x'] + v_reflect[0] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
-                        bullet['landing_y'] = bullet['y'] + v_reflect[1] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
-                        norm = math.hypot(v_reflect[0], v_reflect[1])
-                        if norm == 0:
-                            norm = 1
-                        bullet['direction_vec'] = (v_reflect[0]/norm, v_reflect[1]/norm)
-                        bullet['distance_traveled'] = 0
-                        bullet['phase'] = 'flying'
-                        bullet['roll_left'] = bullet['roll_distance']
-                    bullet['bounces'] += 1
-                    if bullet['bounces'] >= bullet['max_bounces']:
-                        if bullet.get('splash'):
-                            splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
-                        bullets_to_remove.append(bullet)
-                        continue
-                else:
-                    if bullet.get('splash'):
-                        splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                if contact_effect == ContactEffect.BOUNCE:
+                    # --- Bounce off wall ---
+                    if bullet.get('is_grenade') and bullet['phase'] in ('flying', 'rolling'):
+                        center_x, center_y = bullet_rect.centerx, bullet_rect.centery
+                        # Simplified normal calculation
+                        if abs(center_x - wall.left) < 5 or abs(center_x - wall.right) < 5:
+                            bullet['velocity_x'] *= -1
+                            bullet['direction_vec'] = (bullet['direction_vec'][0] * -1, bullet['direction_vec'][1])
+                        if abs(center_y - wall.top) < 5 or abs(center_y - wall.bottom) < 5:
+                            bullet['velocity_y'] *= -1
+                            bullet['direction_vec'] = (bullet['direction_vec'][0], bullet['direction_vec'][1] * -1)
+                        
+                        bullet['bounces'] += 1
+                        if bullet['bounces'] >= bullet['max_bounces']:
+                            if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                            bullets_to_remove.append(bullet)
+                elif contact_effect == ContactEffect.EXPLODE:
+                    # --- Explode on wall ---
+                    if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
                     bullets_to_remove.append(bullet)
-                break
+                else: # PIERCE effect
+                    # --- Disappear on wall ---
+                    bullets_to_remove.append(bullet)
+                break # Exit wall loop
         if hit_wall:
             continue
-        # Creature collision for grenades: bounce off creatures
-        if bullet.get('is_grenade'):
-            hit_creature = None
-            for creature in creatures:
-                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
-                    hit_creature = creature
-                    break
-            if hit_creature:
-                # Bounce off creature (like wall)
-                if bullet['phase'] in ('flying', 'rolling'):
-                    # Find normal: from creature center to bullet center
-                    cx, cy = hit_creature.rect.centerx, hit_creature.rect.centery
-                    bx, by = bullet_rect.centerx, bullet_rect.centery
-                    normal_x = bx - cx
-                    normal_y = by - cy
-                    norm = math.hypot(normal_x, normal_y)
-                    if norm == 0:
-                        normal = (1, 0)
-                    else:
-                        normal = (normal_x / norm, normal_y / norm)
-                    v = [bullet['velocity_x'], bullet['velocity_y']]
-                    dot = v[0]*normal[0] + v[1]*normal[1]
-                    v_reflect = [v[0] - 2*dot*normal[0], v[1] - 2*dot*normal[1]]
-                    distance = bullet['travel_distance']
-                    bullet['velocity_x'] = v_reflect[0]
-                    bullet['velocity_y'] = v_reflect[1]
-                    bullet['start_x'] = bullet['x']
-                    bullet['start_y'] = bullet['y']
-                    bullet['landing_x'] = bullet['x'] + v_reflect[0] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
-                    bullet['landing_y'] = bullet['y'] + v_reflect[1] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
-                    norm2 = math.hypot(v_reflect[0], v_reflect[1])
-                    if norm2 == 0:
-                        norm2 = 1
-                    bullet['direction_vec'] = (v_reflect[0]/norm2, v_reflect[1]/norm2)
-                    bullet['distance_traveled'] = 0
-                    bullet['phase'] = 'flying'
-                    bullet['roll_left'] = bullet['roll_distance']
-                bullet['bounces'] += 1
-                if bullet['bounces'] >= bullet['max_bounces']:
-                    if bullet.get('splash'):
-                        splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
-                    bullets_to_remove.append(bullet)
-                    continue
-        # Creature collision with piercing (only for non-grenades)
-        if not bullet.get('is_grenade'):
-            hit_creature = handle_creature_collision(bullet, bullet_rect, creatures, players)
-            if hit_creature:
+
+        # 2. Creature Collision
+        collided_creature = None
+        for creature in creatures:
+            if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
+                collided_creature = creature
+                break # Handle first creature hit
+
+        if collided_creature:
+            if contact_effect == ContactEffect.BOUNCE:
+                # --- Bounce off creature ---
+                if bullet.get('is_grenade') and bullet['phase'] in ('flying', 'rolling'):
+                    # Simplified bounce logic
+                    bullet['velocity_x'] *= -1
+                    bullet['velocity_y'] *= -1
+                    bullet['bounces'] += 1
+                    if bullet['bounces'] >= bullet['max_bounces']:
+                        if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                        bullets_to_remove.append(bullet)
+            elif contact_effect == ContactEffect.EXPLODE:
+                # --- Explode on creature ---
+                if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
                 bullets_to_remove.append(bullet)
-                continue
+            elif contact_effect == ContactEffect.PIERCE:
+                # --- Pierce creatures ---
+                if handle_creature_collision(bullet, bullet_rect, creatures, players):
+                    bullets_to_remove.append(bullet)
+            continue # Collision handled, move to next bullet
+
+    # Remove bullets marked for removal
     for bullet in bullets_to_remove:
         if bullet in bullets:
             bullets.remove(bullet)
+            
     return bullets, splash_effects
 
 def handle_splash_damage(bullet, creatures, splash_effects, tile_size=32):
