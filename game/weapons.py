@@ -7,6 +7,7 @@ class FireMode(Enum):
     SHOTGUN = auto()
     SINGLE = auto()
     THROWN = auto()
+    ORBITAL = auto()
 
 class WeaponSpecialization(Enum):
     PRECISION = auto()
@@ -23,7 +24,7 @@ class ContactEffect(Enum):
     NO_DAMAGE_BOUNCE = auto()
 
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -47,6 +48,7 @@ class Weapon:
         self.detonation_time = detonation_time  # seconds, None means no detonation
         self.contact_effect = contact_effect
         self.bounce_limit = bounce_limit
+        self.drop_height = drop_height
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -77,7 +79,8 @@ def create_rusty_pistol():
         specialization_level=1,
         piercing=1,
         contact_effect=ContactEffect.PIERCE,
-        bounce_limit=None
+        bounce_limit=None,
+        drop_height=None
     )
 
 def create_rocket_launcher():
@@ -101,7 +104,8 @@ def create_rocket_launcher():
         specialization_level=3,
         piercing=0,
         contact_effect=ContactEffect.EXPLODE,
-        bounce_limit=None
+        bounce_limit=None,
+        drop_height=None
     )
 
 def create_mini_gun():
@@ -126,7 +130,8 @@ def create_mini_gun():
         piercing=0,
         contact_effect=ContactEffect.PIERCE,
         warm_up_time=2.0,  # 2 second warm-up time
-        bounce_limit=None
+        bounce_limit=None,
+        drop_height=None
     )
 
 def create_grenade():
@@ -152,7 +157,8 @@ def create_grenade():
         warm_up_time=None,
         detonation_time=3.0,
         contact_effect=ContactEffect.NO_DAMAGE_BOUNCE,
-        bounce_limit=100
+        bounce_limit=100,
+        drop_height=None
     )
 
 def create_ricochet_pistol():
@@ -173,5 +179,28 @@ def create_ricochet_pistol():
         specialization_level=2,
         piercing=0,
         bounce_limit=2,
-        contact_effect=ContactEffect.DAMAGE_BOUNCE
+        contact_effect=ContactEffect.DAMAGE_BOUNCE,
+        drop_height=None
+    )
+
+def create_missile_striker():
+    return Weapon(
+        name="Missile Striker",
+        accuracy=15,
+        range_=1000, # Allows targeting anywhere
+        fire_mode=FireMode.ORBITAL,
+        fire_rate=30, # Effectively controls time between shots
+        damage=50,
+        clip_size=1,
+        reload_speed=4,
+        bullet_size=0.8, # The missile itself is large
+        splash=7.0,
+        bullet_color=(255, 150, 50),
+        bullet_speed=4, # This will be its fall speed
+        ammo=3,
+        specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=5,
+        warm_up_time=2.0,
+        contact_effect=ContactEffect.EXPLODE,
+        drop_height=600 # Missile falls from this "altitude"
     ) 

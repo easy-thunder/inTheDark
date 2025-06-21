@@ -47,6 +47,25 @@ def draw_creatures(screen, creatures, camera_x, camera_y, game_x, game_y, show_c
 def draw_bullets(screen, bullets, camera_x, camera_y, game_x, game_y):
     """Draw all active bullets."""
     for bullet in bullets:
+        if bullet.get('is_orbital'):
+            # --- Draw Orbital Strike ---
+            # Ground position
+            gx = int(bullet['x'] - camera_x + game_x)
+            gy = int(bullet['y'] - camera_y + game_y)
+            
+            # Shadow grows as missile falls
+            shadow_size = int(bullet['size'] * (1 - bullet['z'] / bullet['initial_z']))
+            if shadow_size > 1:
+                pygame.draw.circle(screen, (0,0,0,100), (gx, gy), shadow_size)
+            
+            # Missile grows and appears to fall
+            missile_draw_y = int(gy - bullet['z'] * 0.5) # Y-offset for perspective
+            missile_size = int(shadow_size * 0.8) # Slightly smaller than shadow
+            if missile_size > 1:
+                 pygame.draw.circle(screen, bullet['color'], (gx, missile_draw_y), missile_size)
+            continue
+
+        # Regular bullet drawing
         bx = int(bullet['x'] - camera_x + game_x)
         by = int(bullet['y'] - camera_y + game_y)
         pygame.draw.circle(screen, bullet['color'], (bx, by), bullet['size'])

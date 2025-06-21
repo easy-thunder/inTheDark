@@ -97,7 +97,27 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         'bounce_limit': weapon.bounce_limit
     }
     
-    if weapon.fire_mode == FireMode.THROWN:
+    if weapon.fire_mode == FireMode.ORBITAL:
+        bullet['is_orbital'] = True
+        bullet['z'] = weapon.drop_height
+        bullet['initial_z'] = weapon.drop_height
+        bullet['fall_speed'] = weapon.bullet_speed
+
+        # Target point based on mouse, adjusted for camera and accuracy
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        target_x = mouse_x + camera_x
+        target_y = mouse_y + camera_y
+        
+        # Apply accuracy as a random offset from the cursor
+        offset_angle = random.uniform(0, 2 * math.pi)
+        offset_radius = weapon.accuracy * (random.random() * 3) # Randomize radius for less of a donut effect
+        target_x += math.cos(offset_angle) * offset_radius
+        target_y += math.sin(offset_angle) * offset_radius
+
+        # The bullet's (x,y) is the ground target
+        bullet['x'] = target_x
+        bullet['y'] = target_y
+    elif weapon.fire_mode == FireMode.THROWN:
         # This logic is for thrown weapons with special physics (arcing, rolling)
         bullet['is_grenade'] = True # Keep this flag for movement logic
         bullet['detonation_time'] = weapon.detonation_time
@@ -181,6 +201,17 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
     """
     bullets_to_remove = []
     for bullet in bullets[:]:
+        if bullet.get('is_orbital'):
+            bullet['z'] -= bullet['fall_speed']
+            if bullet['z'] <= 0:
+                # Landed, now explode
+                if bullet.get('splash'):
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                bullets_to_remove.append(bullet)
+                continue
+            # Skip all other physics for orbital projectiles
+            continue
+
         if bullet.get('is_grenade'):
             now = pygame.time.get_ticks()
             if now - bullet['creation_time'] >= bullet['detonation_time'] * 1000:
