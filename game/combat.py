@@ -242,13 +242,18 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 if can_bounce:
                     bullet['bounces'] += 1
                     # --- Perform bounce physics ---
-                    center_x, center_y = bullet_rect.centerx, bullet_rect.centery
-                    if bullet.get('is_grenade'): # Thrown weapon bounce
-                        if abs(center_x - wall.left) < 5 or abs(center_x - wall.right) < 5: bullet['velocity_x'] *= -1
-                        if abs(center_y - wall.top) < 5 or abs(center_y - wall.bottom) < 5: bullet['velocity_y'] *= -1
-                    else: # Regular bullet bounce
-                        if abs(center_x - wall.left) < 5 or abs(center_x - wall.right) < 5: bullet['dx'] *= -1
-                        if abs(center_y - wall.top) < 5 or abs(center_y - wall.bottom) < 5: bullet['dy'] *= -1
+                    # Calculate overlap to determine collision side
+                    dx_overlap = min(bullet_rect.right - wall.left, wall.right - bullet_rect.left)
+                    dy_overlap = min(bullet_rect.bottom - wall.top, wall.bottom - bullet_rect.top)
+
+                    if dx_overlap < dy_overlap:
+                        # Horizontal collision
+                        if bullet.get('is_grenade'): bullet['velocity_x'] *= -1
+                        else: bullet['dx'] *= -1
+                    else:
+                        # Vertical collision
+                        if bullet.get('is_grenade'): bullet['velocity_y'] *= -1
+                        else: bullet['dy'] *= -1
                 else:
                     # --- Cannot bounce, handle other effects or remove ---
                     if contact_effect == ContactEffect.EXPLODE:
@@ -278,12 +283,21 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                         bullet['hit_creatures'].add(id(collided_creature))
 
                 bullet['bounces'] += 1
-                if bullet.get('is_grenade'):
-                    bullet['velocity_x'] *= -1
-                    bullet['velocity_y'] *= -1
+                
+                # --- Perform bounce physics ---
+                creature_rect = collided_creature.rect
+                # Calculate overlap to determine collision side
+                dx_overlap = min(bullet_rect.right - creature_rect.left, creature_rect.right - bullet_rect.left)
+                dy_overlap = min(bullet_rect.bottom - creature_rect.top, creature_rect.bottom - bullet_rect.top)
+
+                if dx_overlap < dy_overlap:
+                    # Horizontal collision
+                    if bullet.get('is_grenade'): bullet['velocity_x'] *= -1
+                    else: bullet['dx'] *= -1
                 else:
-                    bullet['dx'] *= -1
-                    bullet['dy'] *= -1
+                    # Vertical collision
+                    if bullet.get('is_grenade'): bullet['velocity_y'] *= -1
+                    else: bullet['dy'] *= -1
             elif contact_effect == ContactEffect.EXPLODE:
                 if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
                 bullets_to_remove.append(bullet)
