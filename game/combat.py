@@ -104,20 +104,30 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         world_mouse_x = mouse_x + camera_x
         world_mouse_y = mouse_y + camera_y
         start_x, start_y = player.rect.centerx, player.rect.centery
-        target_x = world_mouse_x
-        target_y = world_mouse_y
-        dx = target_x - start_x
-        dy = target_y - start_y
-        distance_to_target = math.hypot(dx, dy)
-        if distance_to_target == 0:
-            dx, dy = 1, 0
-            distance_to_target = 1
-        norm_dx = dx / distance_to_target
-        norm_dy = dy / distance_to_target
-        
-        # Set velocity so grenade lands at mouse position in N frames
-        arc_frames = max(10, min(40, int(distance_to_target / 10)))
-        velocity = distance_to_target / arc_frames
+
+        # Vector from player to mouse
+        dir_dx = world_mouse_x - start_x
+        dir_dy = world_mouse_y - start_y
+        distance_to_mouse = math.hypot(dir_dx, dir_dy)
+
+        # Normalize direction vector
+        if distance_to_mouse == 0:
+            norm_dx, norm_dy = player.aim_direction
+        else:
+            norm_dx = dir_dx / distance_to_mouse
+            norm_dy = dir_dy / distance_to_mouse
+
+        # Determine the actual travel distance, clamped by range
+        max_throw_range = weapon.range * tile_size
+        travel_distance = min(distance_to_mouse, max_throw_range)
+
+        # Calculate the landing spot based on the clamped distance
+        target_x = start_x + norm_dx * travel_distance
+        target_y = start_y + norm_dy * travel_distance
+
+        # Set velocity so grenade lands at the target spot in N frames
+        arc_frames = max(10, min(40, int(travel_distance / 10)))
+        velocity = travel_distance / arc_frames if arc_frames > 0 else 0
         velocity_x = norm_dx * velocity
         velocity_y = norm_dy * velocity
         
@@ -128,12 +138,12 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         bullet['landing_x'] = target_x
         bullet['landing_y'] = target_y
         bullet['phase'] = 'flying'
-        bullet['roll_distance'] = max(30, min(80, distance_to_target * 0.15))
+        bullet['roll_distance'] = max(30, min(80, travel_distance * 0.15))
         bullet['roll_dx'] = norm_dx
         bullet['roll_dy'] = norm_dy
         bullet['roll_left'] = bullet['roll_distance']
         bullet['direction_vec'] = (norm_dx, norm_dy)
-        bullet['travel_distance'] = distance_to_target
+        bullet['travel_distance'] = travel_distance
         bullet['distance_traveled'] = 0
     
     return bullet
@@ -266,6 +276,50 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 break
         if hit_wall:
             continue
+        # Creature collision for grenades: bounce off creatures
+        if bullet.get('is_grenade'):
+            hit_creature = None
+            for creature in creatures:
+                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
+                    hit_creature = creature
+                    break
+            if hit_creature:
+                # Bounce off creature (like wall)
+                if bullet['phase'] in ('flying', 'rolling'):
+                    # Find normal: from creature center to bullet center
+                    cx, cy = hit_creature.rect.centerx, hit_creature.rect.centery
+                    bx, by = bullet_rect.centerx, bullet_rect.centery
+                    normal_x = bx - cx
+                    normal_y = by - cy
+                    norm = math.hypot(normal_x, normal_y)
+                    if norm == 0:
+                        normal = (1, 0)
+                    else:
+                        normal = (normal_x / norm, normal_y / norm)
+                    v = [bullet['velocity_x'], bullet['velocity_y']]
+                    dot = v[0]*normal[0] + v[1]*normal[1]
+                    v_reflect = [v[0] - 2*dot*normal[0], v[1] - 2*dot*normal[1]]
+                    distance = bullet['travel_distance']
+                    bullet['velocity_x'] = v_reflect[0]
+                    bullet['velocity_y'] = v_reflect[1]
+                    bullet['start_x'] = bullet['x']
+                    bullet['start_y'] = bullet['y']
+                    bullet['landing_x'] = bullet['x'] + v_reflect[0] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
+                    bullet['landing_y'] = bullet['y'] + v_reflect[1] * (distance / max(abs(v_reflect[0]), abs(v_reflect[1]), 1))
+                    norm2 = math.hypot(v_reflect[0], v_reflect[1])
+                    if norm2 == 0:
+                        norm2 = 1
+                    bullet['direction_vec'] = (v_reflect[0]/norm2, v_reflect[1]/norm2)
+                    bullet['distance_traveled'] = 0
+                    bullet['phase'] = 'flying'
+                    bullet['roll_left'] = bullet['roll_distance']
+                bullet['bounces'] += 1
+                if bullet['bounces'] >= bullet['max_bounces']:
+                    if bullet.get('splash'):
+                        splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                    bullets_to_remove.append(bullet)
+                    continue
+        # Creature collision with piercing (only for non-grenades)
         if not bullet.get('is_grenade'):
             hit_creature = handle_creature_collision(bullet, bullet_rect, creatures, players)
             if hit_creature:
@@ -337,4 +391,53 @@ def handle_creature_collision(bullet, bullet_rect, creatures, players):
         if should_remove:
             return True  # Remove bullet if piercing logic says so
     
+    return False
+
+def handle_piercing_collision(bullet, creature, players):
+    """
+    Handle piercing collision logic for bullets.
+
+    Args:
+        bullet: Bullet dictionary
+        creature: Creature object that was hit
+        players: List of Player objects
+
+    Returns:
+        True if bullet should be removed, False if it should continue
+    """
+    # Initialize piercing data if not present
+    if 'pierces_left' not in bullet:
+        weapon_index = bullet.get('weapon_index', 0)
+        weapon = None
+        for player in players:
+            if hasattr(player.character, 'weapons') and len(player.character.weapons) > weapon_index:
+                weapon = player.character.weapons[weapon_index]
+                break
+        piercing = getattr(weapon, 'piercing', 0) if weapon else 0
+        bullet['pierces_left'] = piercing
+        bullet['original_damage'] = bullet['damage']
+        bullet['hit_creatures'] = set()
+
+    # Check if we've already hit this creature
+    if id(creature) in bullet['hit_creatures']:
+        return False
+
+    # Apply damage
+    creature.hp -= bullet['damage']
+    bullet['hit_creatures'].add(id(creature))
+
+    # If piercing is 0, remove bullet immediately
+    if bullet['pierces_left'] == 0:
+        return True
+
+    # If piercing > 0, decrement piercing and reduce damage
+    bullet['pierces_left'] -= 1
+    min_damage = bullet['original_damage'] * 0.3
+    new_damage = bullet['damage'] * 0.9
+    bullet['damage'] = max(min_damage, new_damage)
+
+    # If out of pierces, remove bullet
+    if bullet['pierces_left'] < 0:
+        return True
+
     return False 

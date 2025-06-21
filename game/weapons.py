@@ -118,7 +118,7 @@ def create_grenade():
     return Weapon(
         name="Grenade",
         accuracy=5,  # Very accurate
-        range_=12,  # Long range
+        range_=8,  # Long range
         fire_mode=FireMode.SINGLE,
         fire_rate=30,  # Slow fire rate
         damage=25,  # High damage
