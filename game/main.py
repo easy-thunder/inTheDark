@@ -8,7 +8,7 @@ from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_zombie_cat
-from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun
+from game.combat import handle_firing, reset_warm_up, update_bullets
 
 # Initialize pygame
 pygame.init()
@@ -359,60 +359,10 @@ def main():
         fire_pressed = keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]
         
         if fire_pressed:
-            player = players[0]
-            if not player.dead:
-                weapon = player.character.weapons[player_weapon_indices[0]]
-                now = pygame.time.get_ticks()
-                
-                # Handle warm-up time
-                if weapon.warm_up_time and not weapon.is_warming_up:
-                    weapon.is_warming_up = True
-                    weapon.warm_up_start = now
-                
-                # Check if weapon is ready to fire (warmed up or no warm-up required)
-                can_fire = True
-                if weapon.warm_up_time and weapon.is_warming_up:
-                    warm_up_elapsed = (now - weapon.warm_up_start) / 1000.0
-                    if warm_up_elapsed < weapon.warm_up_time:
-                        can_fire = False
-                
-                fire_delay = 60000 / weapon.fire_rate  # ms per shot
-                if can_fire and now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
-                    spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
-                    base_dx, base_dy = player.aim_direction
-                    angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
-                    dx = math.cos(angle)
-                    dy = math.sin(angle)
-                    bullet_speed = weapon.bullet_speed
-                    bullet_range = weapon.range * TILE_SIZE
-                    bullet_size = int(weapon.bullet_size * TILE_SIZE)
-                    bullet = {
-                        'x': player.rect.centerx,
-                        'y': player.rect.centery,
-                        'dx': dx,
-                        'dy': dy,
-                        'speed': bullet_speed,
-                        'range': bullet_range,
-                        'distance': 0,
-                        'size': bullet_size,
-                        'damage': weapon.damage,
-                        'color': weapon.bullet_color,
-                        'splash': weapon.splash,
-                        'weapon_index': player_weapon_indices[0]
-                    }
-                    bullets.append(bullet)
-                    weapon.current_clip -= 1
-                    weapon.last_shot_time = now
-                    # Automatic reload if clip is empty and reserve ammo (or infinite)
-                    if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
-                        player.reload_weapon(player_weapon_indices[0])
+            bullets = handle_firing(players, player_weapon_indices, bullets, 0, TILE_SIZE)
         else:
             # Reset warm-up when no fire button is pressed
-            for player in players:
-                for weapon in player.character.weapons:
-                    if weapon.warm_up_time:
-                        weapon.is_warming_up = False
-                        weapon.warm_up_start = None
+            reset_warm_up(players)
         
         # --- Camera follows player 1 ---
         camera_x = players[0].x - GAME_WIDTH // 2
@@ -499,106 +449,8 @@ def main():
         # Remove dead creatures
         creatures[:] = [c for c in creatures if c.hp > 0]
 
-        # --- Update bullets ---
-        for bullet in bullets[:]:
-            bullet['x'] += bullet['dx'] * bullet['speed']
-            bullet['y'] += bullet['dy'] * bullet['speed']
-            bullet['distance'] += bullet['speed']
-            if bullet['distance'] > bullet['range']:
-                bullets.remove(bullet)
-
-        # --- Bullet collision with creatures and walls ---
-        for bullet in bullets[:]:
-            bullet_rect = pygame.Rect(
-                bullet['x'] - bullet['size'],
-                bullet['y'] - bullet['size'],
-                bullet['size'] * 2,
-                bullet['size'] * 2
-            )
-            # Wall collision
-            hit_wall = False
-            for wall in visible_walls:
-                if bullet_rect.colliderect(wall):
-                    hit_wall = True
-                    break
-            if hit_wall:
-                # Splash damage if rocket
-                if bullet.get('splash'):
-                    splash_radius = bullet['splash'] * TILE_SIZE
-                    center = (bullet['x'], bullet['y'])
-                    splash_damages = [20, 16, 12, 8, 2]
-                    for creature in creatures:
-                        if creature.hp > 0:
-                            dist = math.hypot(creature.rect.centerx - center[0], creature.rect.centery - center[1])
-                            for i in range(5):
-                                if dist <= splash_radius * (i+1)/5:
-                                    creature.hp -= splash_damages[i]
-                                    break
-                    # Add splash effect for visual
-                    splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
-                bullets.remove(bullet)
-                continue
-            # Creature collision (PIERCING SUPPORT)
-            hit_creature = False
-            for creature in creatures:
-                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
-                    # Splash damage if rocket
-                    if bullet.get('splash'):
-                        splash_radius = bullet['splash'] * TILE_SIZE
-                        center = (bullet['x'], bullet['y'])
-                        splash_damages = [20, 16, 12, 8, 2]
-                        for c in creatures:
-                            if c.hp > 0:
-                                dist = math.hypot(c.rect.centerx - center[0], c.rect.centery - center[1])
-                                for i in range(5):
-                                    if dist <= splash_radius * (i+1)/5:
-                                        c.hp -= splash_damages[i]
-                                        break
-                        splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
-                        bullets.remove(bullet)
-                        break
-                    else:
-                        # --- PIERCING LOGIC ---
-                        # On bullet creation, set 'pierces_left' and 'original_damage' if not present
-                        if 'pierces_left' not in bullet:
-                            # Get weapon for this bullet
-                            weapon_index = bullet.get('weapon_index', 0)
-                            weapon = None
-                            for player in players:
-                                if hasattr(player.character, 'weapons') and len(player.character.weapons) > weapon_index:
-                                    weapon = player.character.weapons[weapon_index]
-                                    break
-                            piercing = getattr(weapon, 'piercing', 0) if weapon else 0
-                            bullet['pierces_left'] = piercing
-                            bullet['original_damage'] = bullet['damage']
-                            bullet['hit_creatures'] = set()  # Track which creatures this bullet has hit
-                        
-                        # Check if we've already hit this creature
-                        if id(creature) in bullet['hit_creatures']:
-                            continue
-                        
-                        # Apply damage
-                        creature.hp -= bullet['damage']
-                        bullet['hit_creatures'].add(id(creature))  # Mark this creature as hit
-                        
-                        # If no piercing, remove bullet
-                        if bullet['pierces_left'] == 0:
-                            bullets.remove(bullet)
-                            break
-                        # If piercing, decrement and reduce damage
-                        bullet['pierces_left'] -= 1
-                        # Reduce damage by 10%, but not below 70% of original
-                        min_damage = bullet['original_damage'] * 0.3
-                        new_damage = bullet['damage'] * 0.9
-                        bullet['damage'] = max(min_damage, new_damage)
-                        # If out of pierces, remove bullet
-                        if bullet['pierces_left'] < 0:
-                            bullets.remove(bullet)
-                            break
-                    hit_creature = True
-            # Only allow one creature hit per frame per bullet
-            if hit_creature:
-                continue
+        # --- Update bullets and handle collisions ---
+        bullets, splash_effects = update_bullets(bullets, visible_walls, creatures, splash_effects, players, TILE_SIZE)
 
         # --- Draw splash effects ---
         now = pygame.time.get_ticks()
