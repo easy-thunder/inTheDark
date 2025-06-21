@@ -98,7 +98,7 @@ def create_mini_gun():
         fire_mode=FireMode.AUTOMATIC,
         fire_rate=480,  # Very high fire rate
         damage=1,  # Low damage per bullet
-        clip_size=100,  # Large clip
+        clip_size=120,  # Large clip
         reload_speed=4.0,  # Slow reload
         bullet_size=0.15,  # Smaller bullets than pistol
         splash=None,  # No splash damage

@@ -287,7 +287,8 @@ def main():
         Player(player_start_pos[0], player_start_pos[1], copy.deepcopy(TESTY)),
         Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], copy.deepcopy(TESTY))
     ]
-    current_weapon_index = 0
+    # Individual weapon indices for each player
+    player_weapon_indices = [0, 0]  # [player1_weapon_index, player2_weapon_index]
 
     # --- Creature Management ---
     creatures = []
@@ -313,20 +314,20 @@ def main():
                 # --- Weapon switching ---
                 if event.key == pygame.K_1:
                     if len(players[0].character.weapons) > 0:
-                        current_weapon_index = 0
+                        player_weapon_indices[0] = 0
                 if event.key == pygame.K_2:
                     if len(players[0].character.weapons) > 1:
-                        current_weapon_index = 1
+                        player_weapon_indices[0] = 1
                 if event.key == pygame.K_3:
                     if len(players[0].character.weapons) > 2:
-                        current_weapon_index = 2
+                        player_weapon_indices[0] = 2
                 # --- Toggle creature HP bars ---
                 if event.key == pygame.K_h:
                     show_creature_hp = not show_creature_hp
                 # --- Reloading ---
                 if event.key == pygame.K_r:
                     for player in players:
-                        player.reload_weapon(0)
+                        player.reload_weapon(player_weapon_indices[players.index(player)])
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
                     # No firing logic here - handled in main loop
@@ -360,7 +361,7 @@ def main():
         if fire_pressed:
             player = players[0]
             if not player.dead:
-                weapon = player.character.weapons[current_weapon_index]
+                weapon = player.character.weapons[player_weapon_indices[0]]
                 now = pygame.time.get_ticks()
                 
                 # Handle warm-up time
@@ -397,14 +398,14 @@ def main():
                         'damage': weapon.damage,
                         'color': weapon.bullet_color,
                         'splash': weapon.splash,
-                        'weapon_index': current_weapon_index
+                        'weapon_index': player_weapon_indices[0]
                     }
                     bullets.append(bullet)
                     weapon.current_clip -= 1
                     weapon.last_shot_time = now
                     # Automatic reload if clip is empty and reserve ammo (or infinite)
                     if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
-                        player.reload_weapon(current_weapon_index)
+                        player.reload_weapon(player_weapon_indices[0])
         else:
             # Reset warm-up when no fire button is pressed
             for player in players:
@@ -464,7 +465,7 @@ def main():
             player.update_xp()
             player.regen()
             player.update_aim(camera_x, camera_y, player_index=i)
-            player.update_reload(current_weapon_index)
+            player.update_reload(player_weapon_indices[i])
         # --- Revival mechanic ---
         for i, player in enumerate(players):
             if player.dead:
@@ -477,7 +478,7 @@ def main():
                         break
                 else:
                     player.revive_progress = 0
-            player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=current_weapon_index)
+            player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=player_weapon_indices[i])
 
         # --- Update and draw all creatures ---
         for creature in creatures:
