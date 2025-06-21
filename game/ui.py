@@ -31,6 +31,24 @@ def draw_creatures(screen, creatures, camera_x, camera_y, game_x, game_y, show_c
     """Draw all creatures and their HP bars."""
     for creature in creatures:
         creature.draw(screen, camera_x, camera_y, game_x, game_y)
+        
+        # Draw burning effects for creatures on fire
+        if hasattr(creature, 'burning_effects') and creature.burning_effects:
+            # Draw orange flame particles around the creature
+            cx = int(creature.rect.centerx - camera_x + game_x)
+            cy = int(creature.rect.centery - camera_y + game_y)
+            
+            # Create flame particle effect
+            for i in range(5):
+                angle = (pygame.time.get_ticks() / 100 + i * 72) % 360
+                radius = 15 + (pygame.time.get_ticks() / 50) % 10
+                px = cx + int(math.cos(math.radians(angle)) * radius)
+                py = cy + int(math.sin(math.radians(angle)) * radius)
+                
+                # Draw flame particle
+                flame_size = 2 + (pygame.time.get_ticks() / 100) % 3
+                pygame.draw.circle(screen, (255, 100, 0), (px, py), flame_size)
+        
         # Draw HP bar if enabled
         if show_creature_hp:
             bar_width = creature.width
@@ -63,6 +81,30 @@ def draw_bullets(screen, bullets, camera_x, camera_y, game_x, game_y):
             missile_size = int(shadow_size * 0.8) # Slightly smaller than shadow
             if missile_size > 1:
                  pygame.draw.circle(screen, bullet['color'], (gx, missile_draw_y), missile_size)
+            continue
+
+        # Special flame bullet effects
+        if bullet.get('is_flame'):
+            bx = int(bullet['x'] - camera_x + game_x)
+            by = int(bullet['y'] - camera_y + game_y)
+            
+            # Draw main flame particle
+            pygame.draw.circle(screen, bullet['color'], (bx, by), bullet['size'])
+            
+            # Draw trailing flame particles
+            for i in range(3):
+                trail_x = int(bx - bullet['dx'] * bullet['speed'] * (i + 1) * 0.3)
+                trail_y = int(by - bullet['dy'] * bullet['speed'] * (i + 1) * 0.3)
+                trail_size = max(1, bullet['size'] - i)
+                trail_alpha = 255 - (i * 80)
+                trail_color = (255, 150, 0, trail_alpha)
+                pygame.draw.circle(screen, trail_color, (trail_x, trail_y), trail_size)
+            
+            # Draw flickering flame effect
+            flicker_offset = (pygame.time.get_ticks() / 50) % 4
+            flicker_x = bx + flicker_offset - 2
+            flicker_y = by + (pygame.time.get_ticks() / 100) % 3 - 1
+            pygame.draw.circle(screen, (255, 200, 0), (flicker_x, flicker_y), 1)
             continue
 
         # Regular bullet drawing

@@ -8,6 +8,7 @@ class FireMode(Enum):
     SINGLE = auto()
     THROWN = auto()
     ORBITAL = auto()
+    SPRAY = auto()
 
 class WeaponSpecialization(Enum):
     PRECISION = auto()
@@ -23,8 +24,13 @@ class ContactEffect(Enum):
     DAMAGE_BOUNCE = auto()
     NO_DAMAGE_BOUNCE = auto()
 
+class DamageType(Enum):
+    PHYSICAL = auto()
+    FIRE = auto()
+    ICE = auto()
+
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None, volley=1, spread=0):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None, volley=1, spread=0, damage_type=DamageType.PHYSICAL):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -51,6 +57,7 @@ class Weapon:
         self.drop_height = drop_height
         self.volley = volley  # Number of pellets for shotguns
         self.spread = spread  # Spread angle in degrees for shotguns
+        self.damage_type = damage_type  # Type of damage (physical, fire, ice, etc.)
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -84,7 +91,8 @@ def create_rusty_pistol():
         bounce_limit=None,
         drop_height=None,
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_rocket_launcher():
@@ -111,7 +119,8 @@ def create_rocket_launcher():
         bounce_limit=None,
         drop_height=None,
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_mini_gun():
@@ -139,7 +148,8 @@ def create_mini_gun():
         bounce_limit=None,
         drop_height=None,
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_grenade():
@@ -168,7 +178,8 @@ def create_grenade():
         bounce_limit=100,
         drop_height=None,
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_ricochet_pistol():
@@ -192,7 +203,8 @@ def create_ricochet_pistol():
         contact_effect=ContactEffect.DAMAGE_BOUNCE,
         drop_height=None,
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_missile_striker():
@@ -216,7 +228,8 @@ def create_missile_striker():
         contact_effect=ContactEffect.EXPLODE,
         drop_height=600, # Missile falls from this "altitude"
         volley=1,
-        spread=0
+        spread=0,
+        damage_type=DamageType.PHYSICAL
     )
 
 def create_shotgun():
@@ -241,5 +254,32 @@ def create_shotgun():
         piercing=0,  # No piercing
         contact_effect=ContactEffect.PIERCE,
         volley=8,  # 8 pellets
-        spread=30  # 30 degree spread
+        spread=30,  # 30 degree spread
+        damage_type=DamageType.PHYSICAL
+    )
+
+def create_flamethrower():
+    return Weapon(
+        name="Inferno Flamethrower",
+        accuracy=20,  # Wide spray pattern
+        range_=4,  # Short range but devastating
+        fire_mode=FireMode.SPRAY,  # Continuous spray
+        fire_rate=120,  # High fire rate for continuous flames
+        damage=3,  # Damage per flame particle
+        clip_size=50,  # Fuel tank capacity
+        reload_speed=4.0,  # Slow fuel refill
+        bullet_size=0.15,  # Small flame particles
+        splash=None,  # No splash, but damage over time
+        bullet_color=(255, 100, 0),  # Orange flames
+        bullet_speed=6,  # Slower moving flames
+        ammo=100,  # Limited fuel
+        traits=["Burning"],  # Special trait for fire damage
+        ability=None,
+        specialization_type=WeaponSpecialization.EXPLOSIVES,  # Fire is explosive-like
+        specialization_level=3,
+        piercing=0,  # No piercing
+        contact_effect=ContactEffect.PIERCE,  # Flames pass through but deal damage
+        volley=3,  # Multiple flame particles per spray
+        spread=45,  # Wide flame cone
+        damage_type=DamageType.FIRE  # Fire damage type for DoT
     ) 

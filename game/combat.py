@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from game.weapons import FireMode, ContactEffect
+from game.weapons import FireMode, ContactEffect, DamageType
 
 def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0):
     """
@@ -43,6 +43,11 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         # Create bullet(s)
         if weapon.fire_mode == FireMode.SHOTGUN:
             # Create multiple pellets for shotgun
+            for i in range(weapon.volley):
+                bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
+                bullets.append(bullet)
+        elif weapon.fire_mode == FireMode.SPRAY:
+            # Create multiple flame particles for flamethrower
             for i in range(weapon.volley):
                 bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
                 bullets.append(bullet)
@@ -116,8 +121,17 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         'weapon_index': weapon_index,
         'contact_effect': weapon.contact_effect,
         'bounces': 0,
-        'bounce_limit': weapon.bounce_limit
+        'bounce_limit': weapon.bounce_limit,
+        'damage_type': weapon.damage_type
     }
+    
+    # Add flame-specific properties for fire damage
+    if weapon.damage_type == DamageType.FIRE:
+        bullet['is_flame'] = True
+        bullet['burn_duration'] = 3.0  # 3 seconds of burn damage
+        bullet['burn_damage'] = weapon.damage
+        bullet['burn_tick_rate'] = 0.5  # Damage every 0.5 seconds
+        bullet['burned_creatures'] = set()  # Track which creatures are burning
     
     if weapon.fire_mode == FireMode.ORBITAL:
         bullet['is_orbital'] = True
@@ -355,8 +369,15 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
                 bullets_to_remove.append(bullet)
             elif contact_effect == ContactEffect.PIERCE:
-                if handle_creature_collision(bullet, bullet_rect, creatures, players):
-                    bullets_to_remove.append(bullet)
+                # Handle flame weapons with burning effects
+                if bullet.get('damage_type') == DamageType.FIRE:
+                    should_remove = handle_burning_effects(bullet, collided_creature, players)
+                    if should_remove:
+                        bullets_to_remove.append(bullet)
+                else:
+                    # Regular piercing logic
+                    if handle_creature_collision(bullet, bullet_rect, creatures, players):
+                        bullets_to_remove.append(bullet)
             else: # Bouncing bullet that has run out of bounces
                 bullets_to_remove.append(bullet)
             continue
@@ -478,4 +499,75 @@ def handle_piercing_collision(bullet, creature, players):
     if bullet['pierces_left'] < 0:
         return True
 
-    return False 
+    return False
+
+def handle_burning_effects(bullet, creature, players):
+    """
+    Handle burning damage over time effects for flame weapons.
+    
+    Args:
+        bullet: Bullet dictionary with flame properties
+        creature: Creature object that was hit
+        players: List of Player objects
+    
+    Returns:
+        True if bullet should be removed, False if it should continue
+    """
+    if not bullet.get('is_flame') or bullet.get('damage_type') != DamageType.FIRE:
+        return False
+    
+    creature_id = id(creature)
+    
+    # Initialize burning data for this creature if not already burning
+    if creature_id not in bullet['burned_creatures']:
+        bullet['burned_creatures'].add(creature_id)
+        
+        # Apply initial damage
+        creature.hp -= bullet['burn_damage']
+        
+        # Initialize burning state on creature
+        if not hasattr(creature, 'burning_effects'):
+            creature.burning_effects = {}
+        
+        # Add or update burning effect
+        creature.burning_effects[creature_id] = {
+            'damage': bullet['burn_damage'],
+            'duration': bullet['burn_duration'],
+            'tick_rate': bullet['burn_tick_rate'],
+            'start_time': pygame.time.get_ticks(),
+            'last_tick': pygame.time.get_ticks()
+        }
+    
+    # Don't remove the bullet - let it continue to spread fire
+    return False
+
+def update_burning_creatures(creatures):
+    """
+    Update all burning creatures and apply damage over time.
+    
+    Args:
+        creatures: List of creature objects
+    """
+    current_time = pygame.time.get_ticks()
+    
+    for creature in creatures:
+        if hasattr(creature, 'burning_effects') and creature.burning_effects:
+            effects_to_remove = []
+            
+            for effect_id, effect in creature.burning_effects.items():
+                elapsed_time = (current_time - effect['start_time']) / 1000.0
+                
+                # Check if burning duration has expired
+                if elapsed_time >= effect['duration']:
+                    effects_to_remove.append(effect_id)
+                    continue
+                
+                # Apply damage at tick rate intervals
+                time_since_last_tick = (current_time - effect['last_tick']) / 1000.0
+                if time_since_last_tick >= effect['tick_rate']:
+                    creature.hp -= effect['damage']
+                    effect['last_tick'] = current_time
+            
+            # Remove expired effects
+            for effect_id in effects_to_remove:
+                del creature.burning_effects[effect_id] 

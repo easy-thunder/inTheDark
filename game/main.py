@@ -6,7 +6,7 @@ from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_thorny_venom_thistle
 from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun, create_grenade
-from game.combat import handle_firing, reset_warm_up, update_bullets
+from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures
 from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
 from game.input_handler import handle_events, get_player_movement, is_fire_pressed
@@ -122,6 +122,9 @@ def main():
 
         # --- Update Bullets and Handle Collisions ---
         bullets, splash_effects = update_bullets(bullets, visible_walls, creatures, splash_effects, players, TILE_SIZE)
+        
+        # --- Update Burning Effects ---
+        update_burning_creatures(creatures)
 
         # --- Draw Effects ---
         draw_splash_effects(screen, splash_effects, camera_x, camera_y, GAME_X, GAME_Y)
