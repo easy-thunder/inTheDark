@@ -109,6 +109,6 @@ def create_mini_gun():
         ability=None,
         specialization_type=WeaponSpecialization.ASSAULT,
         specialization_level=4,
-        piercing=1,  # Can pierce through one enemy
+        piercing=0,  # Can pierce through one enemy
         warm_up_time=2.0  # 2 second warm-up time
     ) 

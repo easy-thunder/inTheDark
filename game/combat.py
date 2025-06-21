@@ -152,6 +152,7 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
         # Creature collision with piercing
         hit_creature = handle_creature_collision(bullet, bullet_rect, creatures, players)
         if hit_creature:
+            bullets.remove(bullet)
             continue
     
     return bullets, splash_effects
@@ -196,16 +197,26 @@ def handle_creature_collision(bullet, bullet_rect, creatures, players):
         players: List of Player objects
     
     Returns:
-        True if bullet hit a creature, False otherwise
+        True if bullet should be removed, False if it should continue
     """
+    # Find all creatures that this bullet collides with
+    hit_creatures = []
     for creature in creatures:
         if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
-            # Handle splash damage
-            if bullet.get('splash'):
-                return True  # Bullet will be removed by caller
-            
-            # Handle piercing logic
-            return handle_piercing_collision(bullet, creature, players)
+            hit_creatures.append(creature)
+    
+    if not hit_creatures:
+        return False
+    
+    # Handle splash damage
+    if bullet.get('splash'):
+        return True  # Bullet will be removed by caller
+    
+    # Handle piercing logic for all hit creatures
+    for creature in hit_creatures:
+        should_remove = handle_piercing_collision(bullet, creature, players)
+        if should_remove:
+            return True  # Remove bullet if piercing logic says so
     
     return False
 
@@ -242,11 +253,11 @@ def handle_piercing_collision(bullet, creature, players):
     creature.hp -= bullet['damage']
     bullet['hit_creatures'].add(id(creature))
     
-    # If no piercing, remove bullet
+    # If piercing is 0, remove bullet immediately
     if bullet['pierces_left'] == 0:
         return True
     
-    # If piercing, decrement and reduce damage
+    # If piercing > 0, decrement piercing and reduce damage
     bullet['pierces_left'] -= 1
     min_damage = bullet['original_damage'] * 0.3
     new_damage = bullet['damage'] * 0.9
