@@ -8,7 +8,7 @@ from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_zombie_cat
-from game.weapons import create_rusty_pistol, create_rocket_launcher
+from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun
 
 # Initialize pygame
 pygame.init()
@@ -192,11 +192,12 @@ class Player:
                 else:
                     reload_amount = min(weapon.clip_size, weapon.ammo)
                 weapon.current_clip = reload_amount
+                # Only decrement reserve if not infinite
                 if not self.has_infinite_ammo(weapon) and weapon.ammo is not None:
                     weapon.ammo -= reload_amount
                 weapon.is_reloading = False
 
-    def draw(self, surface, camera_x, camera_y, player_index=0):
+    def draw(self, surface, camera_x, camera_y, player_index=0, current_weapon_index=0):
         draw_rect = self.rect.move(-camera_x + GAME_X, -camera_y + GAME_Y)
         if self.dead:
             pygame.draw.rect(surface, (80, 80, 80), draw_rect)
@@ -236,7 +237,7 @@ class Player:
             end_y = int(center_y + self.aim_direction[1] * aim_len)
             pygame.draw.line(surface, (255, 255, 0), (center_x, center_y), (end_x, end_y), 2)
         # --- Ammo UI to the right of HP bar for all players ---
-        weapon = self.character.weapons[0] if hasattr(self.character, 'weapons') and self.character.weapons else None
+        weapon = self.character.weapons[current_weapon_index] if hasattr(self.character, 'weapons') and len(self.character.weapons) > current_weapon_index else None
         if weapon:
             ammo_font = pygame.font.Font(None, 18)
             if weapon.ammo is None:
@@ -262,6 +263,20 @@ class Player:
                 start_angle = math.pi  # 180 deg (left)
                 end_angle = math.pi + math.pi * progress  # fill clockwise
                 pygame.draw.arc(surface, (255, 255, 0), arc_rect, start_angle, end_angle, 2)
+            # --- Warm-up progress bar ---
+            elif weapon.warm_up_time and weapon.is_warming_up:
+                now = pygame.time.get_ticks()
+                warm_up_progress = min(1.0, (now - weapon.warm_up_start) / (weapon.warm_up_time * 1000))
+                warm_up_bar_width = ammo_surface.get_width()
+                warm_up_bar_height = 3
+                warm_up_bar_x = ammo_x
+                warm_up_bar_y = ammo_y + ammo_surface.get_height() + 2
+                # Background
+                pygame.draw.rect(surface, (60, 60, 60), (warm_up_bar_x, warm_up_bar_y, warm_up_bar_width, warm_up_bar_height))
+                # Progress
+                if warm_up_progress > 0:
+                    fill_width = int(warm_up_bar_width * warm_up_progress)
+                    pygame.draw.rect(surface, (255, 100, 0), (warm_up_bar_x, warm_up_bar_y, fill_width, warm_up_bar_height))
 
 def main():
     world = World(seed=123)
@@ -302,40 +317,9 @@ def main():
                 if event.key == pygame.K_2:
                     if len(players[0].character.weapons) > 1:
                         current_weapon_index = 1
-                # --- Firing with space bar (Player 1) ---
-                if event.key == pygame.K_SPACE:
-                    player = players[0]
-                    if not player.dead:
-                        weapon = player.character.weapons[current_weapon_index]
-                        now = pygame.time.get_ticks()
-                        fire_delay = 60000 / weapon.fire_rate  # ms per shot
-                        if now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
-                            spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
-                            base_dx, base_dy = player.aim_direction
-                            angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
-                            dx = math.cos(angle)
-                            dy = math.sin(angle)
-                            bullet_speed = weapon.bullet_speed
-                            bullet_range = weapon.range * TILE_SIZE
-                            bullet_size = int(weapon.bullet_size * TILE_SIZE)
-                            bullet = {
-                                'x': player.rect.centerx,
-                                'y': player.rect.centery,
-                                'dx': dx,
-                                'dy': dy,
-                                'speed': bullet_speed,
-                                'range': bullet_range,
-                                'distance': 0,
-                                'size': bullet_size,
-                                'damage': weapon.damage,
-                                'color': weapon.bullet_color,
-                                'splash': weapon.splash,
-                                'weapon_index': current_weapon_index
-                            }
-                            bullets.append(bullet)
-                            if not player.has_infinite_ammo(weapon):
-                                weapon.current_clip -= 1
-                            weapon.last_shot_time = now
+                if event.key == pygame.K_3:
+                    if len(players[0].character.weapons) > 2:
+                        current_weapon_index = 2
                 # --- Toggle creature HP bars ---
                 if event.key == pygame.K_h:
                     show_creature_hp = not show_creature_hp
@@ -345,38 +329,16 @@ def main():
                         player.reload_weapon(0)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    player = players[0]
-                    if not player.dead:
-                        weapon = player.character.weapons[current_weapon_index]
-                        now = pygame.time.get_ticks()
-                        fire_delay = 60000 / weapon.fire_rate  # ms per shot
-                        if now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
-                            spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
-                            base_dx, base_dy = player.aim_direction
-                            angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
-                            dx = math.cos(angle)
-                            dy = math.sin(angle)
-                            bullet_speed = weapon.bullet_speed
-                            bullet_range = weapon.range * TILE_SIZE
-                            bullet_size = int(weapon.bullet_size * TILE_SIZE)
-                            bullet = {
-                                'x': player.rect.centerx,
-                                'y': player.rect.centery,
-                                'dx': dx,
-                                'dy': dy,
-                                'speed': bullet_speed,
-                                'range': bullet_range,
-                                'distance': 0,
-                                'size': bullet_size,
-                                'damage': weapon.damage,
-                                'color': weapon.bullet_color,
-                                'splash': weapon.splash,
-                                'weapon_index': current_weapon_index
-                            }
-                            bullets.append(bullet)
-                            if not player.has_infinite_ammo(weapon):
-                                weapon.current_clip -= 1
-                            weapon.last_shot_time = now
+                    # No firing logic here - handled in main loop
+                    pass
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:  # Left click released
+                    # Reset warm-up when fire button is released
+                    for player in players:
+                        for weapon in player.character.weapons:
+                            if weapon.warm_up_time:
+                                weapon.is_warming_up = False
+                                weapon.warm_up_start = None
         keys = pygame.key.get_pressed()
         # --- Input for Player 1 (WASD) ---
         move_x1 = (keys[pygame.K_d]) - (keys[pygame.K_a])
@@ -390,6 +352,67 @@ def main():
             move_y2 = (keys[pygame.K_DOWN]) - (keys[pygame.K_UP])
             dx2 = move_x2 * players[1].speed
             dy2 = move_y2 * players[1].speed
+        
+        # --- Unified automatic firing system (Player 1) ---
+        # Check if any fire button is pressed
+        fire_pressed = keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]
+        
+        if fire_pressed:
+            player = players[0]
+            if not player.dead:
+                weapon = player.character.weapons[current_weapon_index]
+                now = pygame.time.get_ticks()
+                
+                # Handle warm-up time
+                if weapon.warm_up_time and not weapon.is_warming_up:
+                    weapon.is_warming_up = True
+                    weapon.warm_up_start = now
+                
+                # Check if weapon is ready to fire (warmed up or no warm-up required)
+                can_fire = True
+                if weapon.warm_up_time and weapon.is_warming_up:
+                    warm_up_elapsed = (now - weapon.warm_up_start) / 1000.0
+                    if warm_up_elapsed < weapon.warm_up_time:
+                        can_fire = False
+                
+                fire_delay = 60000 / weapon.fire_rate  # ms per shot
+                if can_fire and now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
+                    spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+                    base_dx, base_dy = player.aim_direction
+                    angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
+                    dx = math.cos(angle)
+                    dy = math.sin(angle)
+                    bullet_speed = weapon.bullet_speed
+                    bullet_range = weapon.range * TILE_SIZE
+                    bullet_size = int(weapon.bullet_size * TILE_SIZE)
+                    bullet = {
+                        'x': player.rect.centerx,
+                        'y': player.rect.centery,
+                        'dx': dx,
+                        'dy': dy,
+                        'speed': bullet_speed,
+                        'range': bullet_range,
+                        'distance': 0,
+                        'size': bullet_size,
+                        'damage': weapon.damage,
+                        'color': weapon.bullet_color,
+                        'splash': weapon.splash,
+                        'weapon_index': current_weapon_index
+                    }
+                    bullets.append(bullet)
+                    weapon.current_clip -= 1
+                    weapon.last_shot_time = now
+                    # Automatic reload if clip is empty and reserve ammo (or infinite)
+                    if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
+                        player.reload_weapon(current_weapon_index)
+        else:
+            # Reset warm-up when no fire button is pressed
+            for player in players:
+                for weapon in player.character.weapons:
+                    if weapon.warm_up_time:
+                        weapon.is_warming_up = False
+                        weapon.warm_up_start = None
+        
         # --- Camera follows player 1 ---
         camera_x = players[0].x - GAME_WIDTH // 2
         camera_y = players[0].y - GAME_HEIGHT // 2
@@ -441,7 +464,7 @@ def main():
             player.update_xp()
             player.regen()
             player.update_aim(camera_x, camera_y, player_index=i)
-            player.update_reload(0)
+            player.update_reload(current_weapon_index)
         # --- Revival mechanic ---
         for i, player in enumerate(players):
             if player.dead:
@@ -454,7 +477,7 @@ def main():
                         break
                 else:
                     player.revive_progress = 0
-            player.draw(screen, camera_x, camera_y, player_index=i)
+            player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=current_weapon_index)
 
         # --- Update and draw all creatures ---
         for creature in creatures:
@@ -514,7 +537,8 @@ def main():
                     splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
                 bullets.remove(bullet)
                 continue
-            # Creature collision
+            # Creature collision (PIERCING SUPPORT)
+            hit_creature = False
             for creature in creatures:
                 if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
                     # Splash damage if rocket
@@ -530,10 +554,50 @@ def main():
                                         c.hp -= splash_damages[i]
                                         break
                         splash_effects.append({'x': center[0], 'y': center[1], 'radius': splash_radius, 'start': pygame.time.get_ticks()})
+                        bullets.remove(bullet)
+                        break
                     else:
+                        # --- PIERCING LOGIC ---
+                        # On bullet creation, set 'pierces_left' and 'original_damage' if not present
+                        if 'pierces_left' not in bullet:
+                            # Get weapon for this bullet
+                            weapon_index = bullet.get('weapon_index', 0)
+                            weapon = None
+                            for player in players:
+                                if hasattr(player.character, 'weapons') and len(player.character.weapons) > weapon_index:
+                                    weapon = player.character.weapons[weapon_index]
+                                    break
+                            piercing = getattr(weapon, 'piercing', 0) if weapon else 0
+                            bullet['pierces_left'] = piercing
+                            bullet['original_damage'] = bullet['damage']
+                            bullet['hit_creatures'] = set()  # Track which creatures this bullet has hit
+                        
+                        # Check if we've already hit this creature
+                        if id(creature) in bullet['hit_creatures']:
+                            continue
+                        
+                        # Apply damage
                         creature.hp -= bullet['damage']
-                    bullets.remove(bullet)
-                    break
+                        bullet['hit_creatures'].add(id(creature))  # Mark this creature as hit
+                        
+                        # If no piercing, remove bullet
+                        if bullet['pierces_left'] == 0:
+                            bullets.remove(bullet)
+                            break
+                        # If piercing, decrement and reduce damage
+                        bullet['pierces_left'] -= 1
+                        # Reduce damage by 10%, but not below 70% of original
+                        min_damage = bullet['original_damage'] * 0.3
+                        new_damage = bullet['damage'] * 0.9
+                        bullet['damage'] = max(min_damage, new_damage)
+                        # If out of pierces, remove bullet
+                        if bullet['pierces_left'] < 0:
+                            bullets.remove(bullet)
+                            break
+                    hit_creature = True
+            # Only allow one creature hit per frame per bullet
+            if hit_creature:
+                continue
 
         # --- Draw splash effects ---
         now = pygame.time.get_ticks()
