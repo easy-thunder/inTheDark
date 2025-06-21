@@ -16,7 +16,7 @@ class WeaponSpecialization(Enum):
     MELEE = auto()
 
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -37,6 +37,7 @@ class Weapon:
         self.specialization_level = specialization_level
         self.piercing = piercing
         self.warm_up_time = warm_up_time  # seconds, None means no warm-up
+        self.detonation_time = detonation_time  # seconds, None means no detonation
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -111,4 +112,28 @@ def create_mini_gun():
         specialization_level=4,
         piercing=0,  # Can pierce through one enemy
         warm_up_time=2.0  # 2 second warm-up time
+    )
+
+def create_grenade():
+    return Weapon(
+        name="Grenade",
+        accuracy=5,  # Very accurate
+        range_=12,  # Long range
+        fire_mode=FireMode.SINGLE,
+        fire_rate=30,  # Slow fire rate
+        damage=25,  # High damage
+        clip_size=1,  # Single shot
+        reload_speed=2.0,  # Medium reload
+        bullet_size=0.3,  # Medium projectile
+        splash=3.0,  # Large explosive radius
+        bullet_color=(0, 255, 0),  # Green
+        bullet_speed=8,  # Medium speed
+        ammo=5,  # Limited ammo
+        traits=[],
+        ability=None,
+        specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=2,
+        piercing=0,  # No piercing
+        warm_up_time=None,  # No warm-up
+        detonation_time=3.0  # 3 seconds to detonate
     ) 

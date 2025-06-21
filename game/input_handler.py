@@ -25,6 +25,9 @@ def handle_events(players, player_weapon_indices, show_creature_hp):
             elif event.key == pygame.K_3:
                 if len(players[0].character.weapons) > 2:
                     player_weapon_indices[0] = 2
+            elif event.key == pygame.K_4:
+                if len(players[0].character.weapons) > 3:
+                    player_weapon_indices[0] = 3
             # --- Toggle creature HP bars ---
             elif event.key == pygame.K_h:
                 show_creature_hp = not show_creature_hp

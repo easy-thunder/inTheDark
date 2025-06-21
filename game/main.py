@@ -5,7 +5,7 @@ from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_thorny_venom_thistle
-from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun
+from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun, create_grenade
 from game.combat import handle_firing, reset_warm_up, update_bullets
 from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
@@ -91,7 +91,7 @@ def main():
         
         # --- Handle Firing ---
         if is_fire_pressed():
-            bullets = handle_firing(players, player_weapon_indices, bullets, 0, TILE_SIZE)
+            bullets = handle_firing(players, player_weapon_indices, bullets, 0, TILE_SIZE, camera_x, camera_y)
         else:
             reset_warm_up(players)
         
