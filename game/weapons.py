@@ -19,10 +19,11 @@ class WeaponSpecialization(Enum):
 class ContactEffect(Enum):
     PIERCE = auto()
     EXPLODE = auto()
-    BOUNCE = auto()
+    DAMAGE_BOUNCE = auto()
+    NO_DAMAGE_BOUNCE = auto()
 
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -45,6 +46,7 @@ class Weapon:
         self.warm_up_time = warm_up_time  # seconds, None means no warm-up
         self.detonation_time = detonation_time  # seconds, None means no detonation
         self.contact_effect = contact_effect
+        self.bounce_limit = bounce_limit
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -74,7 +76,8 @@ def create_rusty_pistol():
         specialization_type=WeaponSpecialization.PISTOLS,
         specialization_level=1,
         piercing=1,
-        contact_effect=ContactEffect.PIERCE
+        contact_effect=ContactEffect.PIERCE,
+        bounce_limit=None
     )
 
 def create_rocket_launcher():
@@ -97,7 +100,8 @@ def create_rocket_launcher():
         specialization_type=WeaponSpecialization.EXPLOSIVES,
         specialization_level=3,
         piercing=0,
-        contact_effect=ContactEffect.EXPLODE
+        contact_effect=ContactEffect.EXPLODE,
+        bounce_limit=None
     )
 
 def create_mini_gun():
@@ -121,30 +125,53 @@ def create_mini_gun():
         specialization_level=4,
         piercing=0,
         contact_effect=ContactEffect.PIERCE,
-        warm_up_time=2.0  # 2 second warm-up time
+        warm_up_time=2.0,  # 2 second warm-up time
+        bounce_limit=None
     )
 
 def create_grenade():
     return Weapon(
         name="Grenade",
-        accuracy=5,  # Very accurate
-        range_=12,  # Long range
+        accuracy=5,
+        range_=12,
         fire_mode=FireMode.THROWN,
-        fire_rate=30,  # Slow fire rate
-        damage=25,  # High damage
-        clip_size=1,  # Single shot
-        reload_speed=2.0,  # Medium reload
-        bullet_size=0.3,  # Medium projectile
-        splash=3.0,  # Large explosive radius
-        bullet_color=(0, 255, 0),  # Green
-        bullet_speed=8,  # Medium speed
-        ammo=5,  # Limited ammo
+        fire_rate=30,
+        damage=25,
+        clip_size=1,
+        reload_speed=2.0,
+        bullet_size=0.3,
+        splash=3.0,
+        bullet_color=(0, 255, 0),
+        bullet_speed=8,
+        ammo=5,
         traits=[],
         ability=None,
         specialization_type=WeaponSpecialization.EXPLOSIVES,
         specialization_level=2,
-        piercing=0,  # No piercing
-        warm_up_time=None,  # No warm-up
-        detonation_time=3.0,  # 3 seconds to detonate
-        contact_effect=ContactEffect.BOUNCE
+        piercing=0,
+        warm_up_time=None,
+        detonation_time=3.0,
+        contact_effect=ContactEffect.NO_DAMAGE_BOUNCE,
+        bounce_limit=100
+    )
+
+def create_ricochet_pistol():
+    return Weapon(
+        name="Ricochet Pistol",
+        accuracy=10,
+        range_=15,
+        fire_mode=FireMode.MANUAL,
+        fire_rate=120,
+        damage=1.5,
+        clip_size=15,
+        reload_speed=2.5,
+        bullet_size=0.2,
+        bullet_color=(100, 100, 255),
+        bullet_speed=10,
+        ammo=None,
+        specialization_type=WeaponSpecialization.PISTOLS,
+        specialization_level=2,
+        piercing=0,
+        bounce_limit=2,
+        contact_effect=ContactEffect.DAMAGE_BOUNCE
     ) 

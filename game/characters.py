@@ -1,4 +1,4 @@
-from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun, create_grenade, WeaponSpecialization
+from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun, create_grenade, create_ricochet_pistol, WeaponSpecialization
 
 DEFAULT_SPECIALIZATIONS = {
     WeaponSpecialization.PRECISION: 1,
@@ -35,9 +35,9 @@ TESTY = Character(
     hp_regen=0.1,
     ap_regen=0.1,
     revival_time=5,
-    weapons=[create_rusty_pistol(), create_grenade()],
+    weapons=[ create_rusty_pistol(), create_ricochet_pistol(), create_grenade(), create_mini_gun()],
     specializations={
-        WeaponSpecialization.EXPLOSIVES: 1,
+        WeaponSpecialization.EXPLOSIVES: 3,
         WeaponSpecialization.ASSAULT: 4,
     }
 ) 
