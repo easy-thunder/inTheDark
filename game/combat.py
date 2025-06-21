@@ -40,9 +40,16 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
     
     fire_delay = 60000 / weapon.fire_rate  # ms per shot
     if can_fire and now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
-        # Create bullet
-        bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
-        bullets.append(bullet)
+        # Create bullet(s)
+        if weapon.fire_mode == FireMode.SHOTGUN:
+            # Create multiple pellets for shotgun
+            for i in range(weapon.volley):
+                bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
+                bullets.append(bullet)
+        else:
+            # Create single bullet for other weapons
+            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullets.append(bullet)
         
         # Update weapon state
         weapon.current_clip -= 1
@@ -54,7 +61,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
     
     return bullets
 
-def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera_y=0):
+def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera_y=0, pellet_index=0):
     """
     Create a bullet for the given player and weapon.
     
@@ -65,15 +72,30 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         tile_size: Size of tiles in pixels
         camera_x: X coordinate of the camera
         camera_y: Y coordinate of the camera
+        pellet_index: Index of pellet for shotguns (0 for single bullets)
     
     Returns:
         Bullet dictionary
     """
-    spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+    # Calculate base direction
     base_dx, base_dy = player.aim_direction
-    angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
-    dx = math.cos(angle)
-    dy = math.sin(angle)
+    
+    # Apply spread for shotguns
+    if weapon.fire_mode == FireMode.SHOTGUN and weapon.volley > 1:
+        # Calculate spread angle for this pellet
+        spread_angle = (weapon.spread / (weapon.volley - 1)) * pellet_index - (weapon.spread / 2)
+        # Convert to radians and apply to base direction
+        spread_rad = math.radians(spread_angle)
+        cos_spread = math.cos(spread_rad)
+        sin_spread = math.sin(spread_rad)
+        dx = base_dx * cos_spread - base_dy * sin_spread
+        dy = base_dx * sin_spread + base_dy * cos_spread
+    else:
+        # Regular accuracy spread for non-shotguns
+        spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+        angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
+        dx = math.cos(angle)
+        dy = math.sin(angle)
     
     bullet_speed = weapon.bullet_speed
     bullet_range = weapon.range * tile_size

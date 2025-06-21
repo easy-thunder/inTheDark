@@ -24,7 +24,7 @@ class ContactEffect(Enum):
     NO_DAMAGE_BOUNCE = auto()
 
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None, volley=1, spread=0):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -49,6 +49,8 @@ class Weapon:
         self.contact_effect = contact_effect
         self.bounce_limit = bounce_limit
         self.drop_height = drop_height
+        self.volley = volley  # Number of pellets for shotguns
+        self.spread = spread  # Spread angle in degrees for shotguns
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -80,7 +82,9 @@ def create_rusty_pistol():
         piercing=1,
         contact_effect=ContactEffect.PIERCE,
         bounce_limit=None,
-        drop_height=None
+        drop_height=None,
+        volley=1,
+        spread=0
     )
 
 def create_rocket_launcher():
@@ -105,7 +109,9 @@ def create_rocket_launcher():
         piercing=0,
         contact_effect=ContactEffect.EXPLODE,
         bounce_limit=None,
-        drop_height=None
+        drop_height=None,
+        volley=1,
+        spread=0
     )
 
 def create_mini_gun():
@@ -131,7 +137,9 @@ def create_mini_gun():
         contact_effect=ContactEffect.PIERCE,
         warm_up_time=2.0,  # 2 second warm-up time
         bounce_limit=None,
-        drop_height=None
+        drop_height=None,
+        volley=1,
+        spread=0
     )
 
 def create_grenade():
@@ -158,7 +166,9 @@ def create_grenade():
         detonation_time=3.0,
         contact_effect=ContactEffect.NO_DAMAGE_BOUNCE,
         bounce_limit=100,
-        drop_height=None
+        drop_height=None,
+        volley=1,
+        spread=0
     )
 
 def create_ricochet_pistol():
@@ -180,7 +190,9 @@ def create_ricochet_pistol():
         piercing=0,
         bounce_limit=2,
         contact_effect=ContactEffect.DAMAGE_BOUNCE,
-        drop_height=None
+        drop_height=None,
+        volley=1,
+        spread=0
     )
 
 def create_missile_striker():
@@ -202,5 +214,32 @@ def create_missile_striker():
         specialization_level=5,
         warm_up_time=2.0,
         contact_effect=ContactEffect.EXPLODE,
-        drop_height=600 # Missile falls from this "altitude"
+        drop_height=600, # Missile falls from this "altitude"
+        volley=1,
+        spread=0
+    )
+
+def create_shotgun():
+    return Weapon(
+        name="Pump Shotgun",
+        accuracy=5,  # Very accurate center
+        range_=6,  # Short range
+        fire_mode=FireMode.SHOTGUN,
+        fire_rate=60,  # Slow fire rate (pump action)
+        damage=8,  # High damage per pellet
+        clip_size=6,  # Classic shotgun capacity
+        reload_speed=3.0,  # Slow reload
+        bullet_size=0.1,  # Small pellets
+        splash=None,  # No splash
+        bullet_color=(255, 200, 100),  # Golden pellets
+        bullet_speed=8,  # Medium speed
+        ammo=24,  # Limited ammo
+        traits=[],
+        ability=None,
+        specialization_type=WeaponSpecialization.SHOTGUNS,
+        specialization_level=1,
+        piercing=0,  # No piercing
+        contact_effect=ContactEffect.PIERCE,
+        volley=8,  # 8 pellets
+        spread=30  # 30 degree spread
     ) 
