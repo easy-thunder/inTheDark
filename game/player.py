@@ -120,13 +120,13 @@ class Player:
         # For future: add controller stick aiming for other players
     
     def has_infinite_ammo(self, weapon):
-        if not weapon or not hasattr(self.character, 'specializations') or not weapon.specialization_type:
+        if not weapon or not hasattr(self.character, 'specializations') or not weapon.common.specialization_type:
             return False
-        return self.character.specializations.get(weapon.specialization_type, 0) >= weapon.specialization_level
+        return self.character.specializations.get(weapon.common.specialization_type, 0) >= weapon.common.specialization_level
 
     def reload_weapon(self, weapon_index=0):
         weapon = self.character.weapons[weapon_index] if hasattr(self.character, 'weapons') and self.character.weapons else None
-        if weapon and not weapon.is_reloading and weapon.current_clip < weapon.clip_size:
+        if weapon and not weapon.is_reloading and weapon.current_clip < weapon.common.clip_size:
             weapon.is_reloading = True
             weapon.reload_start = pygame.time.get_ticks()
 
@@ -134,18 +134,18 @@ class Player:
         weapon = self.character.weapons[weapon_index] if hasattr(self.character, 'weapons') and self.character.weapons else None
         if weapon and weapon.is_reloading:
             now = pygame.time.get_ticks()
-            if now - weapon.reload_start >= weapon.reload_speed * 1000:
+            if now - weapon.reload_start >= weapon.common.reload_speed * 1000:
                 # Calculate how many bullets to reload
                 if self.has_infinite_ammo(weapon):
-                    reload_amount = weapon.clip_size
-                elif weapon.ammo is None:
-                    reload_amount = weapon.clip_size
+                    reload_amount = weapon.common.clip_size
+                elif weapon.common.ammo is None:
+                    reload_amount = weapon.common.clip_size
                 else:
-                    reload_amount = min(weapon.clip_size, weapon.ammo)
+                    reload_amount = min(weapon.common.clip_size, weapon.common.ammo)
                 weapon.current_clip = reload_amount
                 # Only decrement reserve if not infinite
-                if not self.has_infinite_ammo(weapon) and weapon.ammo is not None:
-                    weapon.ammo -= reload_amount
+                if not self.has_infinite_ammo(weapon) and weapon.common.ammo is not None:
+                    weapon.common.ammo -= reload_amount
                 weapon.is_reloading = False
 
     def draw(self, surface, camera_x, camera_y, player_index=0, current_weapon_index=0, game_x=0, game_y=0):
@@ -198,10 +198,10 @@ class Player:
         weapon = self.character.weapons[current_weapon_index] if hasattr(self.character, 'weapons') and len(self.character.weapons) > current_weapon_index else None
         if weapon:
             ammo_font = pygame.font.Font(None, 18)
-            if weapon.ammo is None:
+            if weapon.common.ammo is None:
                 reserve_text = "∞"
             else:
-                reserve_text = str(weapon.ammo)
+                reserve_text = str(weapon.common.ammo)
             if weapon.is_reloading:
                 clip_text = "..."
             else:
@@ -215,7 +215,7 @@ class Player:
             # --- Reload progress semi-circle ---
             if weapon.is_reloading:
                 now = pygame.time.get_ticks()
-                progress = min(1.0, (now - weapon.reload_start) / (weapon.reload_speed * 1000))
+                progress = min(1.0, (now - weapon.reload_start) / (weapon.common.reload_speed * 1000))
                 arc_radius = 6  # Much smaller
                 arc_center = (ammo_x + ammo_surface.get_width() // 2, ammo_y - arc_radius + 2)
                 arc_rect = pygame.Rect(arc_center[0] - arc_radius, arc_center[1] - arc_radius, arc_radius * 2, arc_radius * 2)
@@ -224,9 +224,9 @@ class Player:
                 pygame.draw.arc(surface, (255, 255, 0), arc_rect, start_angle, end_angle, 2)
             
             # --- Warm-up progress bar ---
-            elif weapon.warm_up_time and weapon.is_warming_up:
+            elif weapon.uncommon.warm_up_time and weapon.is_warming_up:
                 now = pygame.time.get_ticks()
-                warm_up_progress = min(1.0, (now - weapon.warm_up_start) / (weapon.warm_up_time * 1000))
+                warm_up_progress = min(1.0, (now - weapon.warm_up_start) / (weapon.uncommon.warm_up_time * 1000))
                 warm_up_bar_width = ammo_surface.get_width()
                 warm_up_bar_height = 3
                 warm_up_bar_x = ammo_x

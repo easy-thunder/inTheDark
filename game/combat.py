@@ -27,65 +27,50 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
     now = pygame.time.get_ticks()
     
     # Handle warm-up time
-    if weapon.warm_up_time and not weapon.is_warming_up:
+    if weapon.uncommon.warm_up_time and not weapon.is_warming_up:
         weapon.is_warming_up = True
         weapon.warm_up_start = now
     
     # Check if weapon is ready to fire (warmed up or no warm-up required)
     can_fire = True
-    if weapon.warm_up_time and weapon.is_warming_up:
+    if weapon.uncommon.warm_up_time and weapon.is_warming_up:
         warm_up_elapsed = (now - weapon.warm_up_start) / 1000.0
-        if warm_up_elapsed < weapon.warm_up_time:
+        if warm_up_elapsed < weapon.uncommon.warm_up_time:
             can_fire = False
     
-    fire_delay = 60000 / weapon.fire_rate  # ms per shot
+    fire_delay = 60000 / weapon.common.fire_rate  # ms per shot
     if can_fire and now - weapon.last_shot_time >= fire_delay and weapon.current_clip > 0 and not weapon.is_reloading:
         # Create bullet(s)
-        if weapon.fire_mode == FireMode.SHOTGUN:
-            # Create multiple pellets for shotgun
-            for i in range(weapon.volley):
+        if weapon.common.fire_mode == FireMode.SHOTGUN:
+            for i in range(weapon.uncommon.volley or 1):
                 bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
                 bullets.append(bullet)
-        elif weapon.fire_mode == FireMode.SPRAY:
-            # Create multiple flame particles for flamethrower with organic patterns
+        elif weapon.common.fire_mode == FireMode.SPRAY:
             base_angle = math.atan2(player.aim_direction[1], player.aim_direction[0])
-            
-            # Create a cluster of flame particles with organic spread
-            for i in range(weapon.volley * 2):  # Double the particles for more organic feel
-                # Calculate organic spread pattern
-                spread_angle = (weapon.spread / (weapon.volley * 2 - 1)) * i - (weapon.spread / 2)
-                # Add some randomness to make it more flame-like
+            for i in range((weapon.uncommon.volley or 1) * 2):
+                spread_angle = ((weapon.uncommon.spread or 0) / ((weapon.uncommon.volley or 1) * 2 - 1)) * i - ((weapon.uncommon.spread or 0) / 2)
                 spread_angle += random.uniform(-5, 5)
-                
-                # Convert to radians and apply to base direction
                 spread_rad = math.radians(spread_angle)
                 cos_spread = math.cos(spread_rad)
                 sin_spread = math.sin(spread_rad)
                 dx = player.aim_direction[0] * cos_spread - player.aim_direction[1] * sin_spread
                 dy = player.aim_direction[0] * sin_spread + player.aim_direction[1] * cos_spread
-                
-                # Add some velocity variation for more organic movement
                 speed_variation = random.uniform(0.8, 1.2)
-                
                 bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
-                # Override the direction and speed for more organic flame movement
                 bullet['dx'] = dx
                 bullet['dy'] = dy
-                bullet['speed'] = weapon.bullet_speed * speed_variation
-                bullet['flame_variation'] = random.uniform(0, 2 * math.pi)  # For unique flame animation
-                bullet['flame_size_variation'] = random.uniform(0.7, 1.3)  # Size variation
-                bullet['flame_intensity'] = random.uniform(0.8, 1.2)  # Brightness variation
+                bullet['speed'] = weapon.common.bullet_speed * speed_variation
+                bullet['flame_variation'] = random.uniform(0, 2 * math.pi)
+                bullet['flame_size_variation'] = random.uniform(0.7, 1.3)
+                bullet['flame_intensity'] = random.uniform(0.8, 1.2)
                 bullets.append(bullet)
-        elif weapon.fire_mode == FireMode.ORBITAL:
-            # Create orbital weapon (missile striker, solar death beam, etc.)
+        elif weapon.common.fire_mode == FireMode.ORBITAL:
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
             bullets.append(bullet)
-        elif weapon.fire_mode == FireMode.ORBITAL_BEAM:
-            # Create orbital beam weapon (solar death beam) - always create, let bullet handle warm-up
+        elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM:
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
             bullets.append(bullet)
         else:
-            # Create single bullet for other weapons
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
             bullets.append(bullet)
         
@@ -94,11 +79,11 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         weapon.last_shot_time = now
         
         # Automatic reload if clip is empty and reserve ammo (or infinite)
-        if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
+        if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.common.ammo is None or weapon.common.ammo > 0)):
             player.reload_weapon(player_weapon_indices[current_player_index])
     
     # Special case for orbital beam weapons - they can fire even during warm-up
-    elif weapon.fire_mode == FireMode.ORBITAL_BEAM and weapon.current_clip > 0 and not weapon.is_reloading:
+    elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM and weapon.current_clip > 0 and not weapon.is_reloading:
         # Create orbital beam weapon immediately, let bullet handle its own warm-up
         bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
         bullets.append(bullet)
@@ -108,7 +93,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         weapon.last_shot_time = now
         
         # Automatic reload if clip is empty and reserve ammo (or infinite)
-        if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
+        if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.common.ammo is None or weapon.common.ammo > 0)):
             player.reload_weapon(player_weapon_indices[current_player_index])
     
     return bullets
@@ -129,13 +114,17 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
     Returns:
         Bullet dictionary
     """
-    # Calculate base direction
     base_dx, base_dy = player.aim_direction
+    # Favor pierce over bounce if both are set
+    piercing = weapon.uncommon.piercing if weapon.uncommon.piercing else 0
+    bounce_limit = weapon.uncommon.bounce_limit if weapon.uncommon.bounce_limit else 0
+    if piercing > 0 and bounce_limit > 0:
+        bounce_limit = 0  # Ignore bounce if pierce is set
     
     # Apply spread for shotguns
-    if weapon.fire_mode == FireMode.SHOTGUN and weapon.volley > 1:
+    if weapon.common.fire_mode == FireMode.SHOTGUN and (weapon.uncommon.volley or 1) > 1:
         # Calculate spread angle for this pellet
-        spread_angle = (weapon.spread / (weapon.volley - 1)) * pellet_index - (weapon.spread / 2)
+        spread_angle = ((weapon.uncommon.spread or 0) / ((weapon.uncommon.volley or 1) - 1)) * pellet_index - ((weapon.uncommon.spread or 0) / 2)
         # Convert to radians and apply to base direction
         spread_rad = math.radians(spread_angle)
         cos_spread = math.cos(spread_rad)
@@ -144,14 +133,14 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         dy = base_dx * sin_spread + base_dy * cos_spread
     else:
         # Regular accuracy spread for non-shotguns
-        spread_angle = (random.uniform(-0.5, 0.5) * weapon.accuracy * 360)
+        spread_angle = (random.uniform(-0.5, 0.5) * weapon.common.accuracy * 360)
         angle = math.atan2(base_dy, base_dx) + math.radians(spread_angle)
         dx = math.cos(angle)
         dy = math.sin(angle)
     
-    bullet_speed = weapon.bullet_speed
-    bullet_range = weapon.range * tile_size
-    bullet_size = int(weapon.bullet_size * tile_size)
+    bullet_speed = weapon.common.bullet_speed
+    bullet_range = weapon.common.range * tile_size
+    bullet_size = int(weapon.common.bullet_size * tile_size)
     
     bullet = {
         'x': player.rect.centerx,
@@ -162,29 +151,30 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         'range': bullet_range,
         'distance': 0,
         'size': bullet_size,
-        'damage': weapon.damage,
-        'color': weapon.bullet_color,
-        'splash': weapon.splash,
+        'damage': weapon.common.damage,
+        'color': weapon.common.bullet_color,
+        'splash': weapon.uncommon.splash,
         'weapon_index': weapon_index,
-        'contact_effect': weapon.contact_effect,
+        'contact_effect': weapon.common.contact_effect,
         'bounces': 0,
-        'bounce_limit': weapon.bounce_limit,
-        'damage_type': weapon.damage_type
+        'bounce_limit': bounce_limit,
+        'damage_type': weapon.common.damage_type,
+        'pierces_left': piercing
     }
     
     # Add flame-specific properties for fire damage
-    if weapon.damage_type == DamageType.FIRE:
+    if weapon.common.damage_type == DamageType.FIRE:
         bullet['is_flame'] = True
         bullet['burn_duration'] = 3.0  # 3 seconds of burn damage
-        bullet['burn_damage'] = weapon.damage
+        bullet['burn_damage'] = weapon.common.damage
         bullet['burn_tick_rate'] = 0.5  # Damage every 0.5 seconds
         bullet['burned_creatures'] = set()  # Track which creatures are burning
     
-    if weapon.fire_mode == FireMode.ORBITAL:
+    if weapon.common.fire_mode == FireMode.ORBITAL:
         bullet['is_orbital'] = True
-        bullet['z'] = weapon.drop_height
-        bullet['initial_z'] = weapon.drop_height
-        bullet['fall_speed'] = weapon.bullet_speed
+        bullet['z'] = weapon.uncommon.drop_height
+        bullet['initial_z'] = weapon.uncommon.drop_height
+        bullet['fall_speed'] = weapon.common.bullet_speed
 
         # Target point based on mouse, adjusted for camera and accuracy
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -193,33 +183,33 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         
         # Apply accuracy as a random offset from the cursor
         offset_angle = random.uniform(0, 2 * math.pi)
-        offset_radius = weapon.accuracy * (random.random() * 3) # Randomize radius for less of a donut effect
+        offset_radius = weapon.common.accuracy * (random.random() * 3) # Randomize radius for less of a donut effect
         target_x += math.cos(offset_angle) * offset_radius
         target_y += math.sin(offset_angle) * offset_radius
 
         # The bullet's (x,y) is the ground target
         bullet['x'] = target_x
         bullet['y'] = target_y
-    elif weapon.fire_mode == FireMode.ORBITAL_BEAM:
+    elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM:
         # Special properties for solar death beam
         bullet['is_orbital_beam'] = True
-        bullet['beam_duration'] = getattr(weapon, 'beam_duration', 5.0)  # Use weapon's duration
+        bullet['beam_duration'] = weapon.unique.beam_duration or 5.0  # Use weapon's duration
         bullet['beam_start_time'] = pygame.time.get_ticks()
-        bullet['beam_damage_tick'] = getattr(weapon, 'beam_damage_tick', 0.2)  # Use weapon's tick rate
+        bullet['beam_damage_tick'] = weapon.unique.beam_damage_tick or 0.2  # Use weapon's tick rate
         bullet['last_damage_time'] = pygame.time.get_ticks()
         bullet['beam_active'] = False  # Will activate after warm-up
         bullet['warm_up_start'] = pygame.time.get_ticks()
-        bullet['warm_up_time'] = weapon.warm_up_time  # Charge-up time
+        bullet['warm_up_time'] = weapon.uncommon.warm_up_time  # Charge-up time
         bullet['mouse_follow'] = True  # Follow mouse cursor
         
         # Initial position based on mouse
         mouse_x, mouse_y = pygame.mouse.get_pos()
         bullet['x'] = mouse_x + camera_x
         bullet['y'] = mouse_y + camera_y
-    elif weapon.fire_mode == FireMode.THROWN:
+    elif weapon.common.fire_mode == FireMode.THROWN:
         # This logic is for thrown weapons with special physics (arcing, rolling)
         bullet['is_grenade'] = True # Keep this flag for movement logic
-        bullet['detonation_time'] = weapon.detonation_time
+        bullet['detonation_time'] = weapon.uncommon.detonation_time
         bullet['creation_time'] = pygame.time.get_ticks()
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -240,7 +230,7 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
             norm_dy = dir_dy / distance_to_mouse
 
         # Determine the actual travel distance, clamped by range
-        max_throw_range = weapon.range * tile_size
+        max_throw_range = weapon.common.range * tile_size
         travel_distance = min(distance_to_mouse, max_throw_range)
 
         # Calculate the landing spot based on the clamped distance
@@ -279,7 +269,7 @@ def reset_warm_up(players):
     """
     for player in players:
         for weapon in player.character.weapons:
-            if weapon.warm_up_time:
+            if weapon.uncommon.warm_up_time:
                 weapon.is_warming_up = False
                 weapon.warm_up_start = None
 
@@ -492,15 +482,15 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
                 bullets_to_remove.append(bullet)
             elif contact_effect == ContactEffect.PIERCE:
-                # Handle flame weapons with burning effects
-                if bullet.get('damage_type') == DamageType.FIRE:
-                    should_remove = handle_burning_effects(bullet, collided_creature, players)
-                    if should_remove:
-                        bullets_to_remove.append(bullet)
-                else:
-                    # Regular piercing logic
-                    if handle_creature_collision(bullet, bullet_rect, creatures, players):
-                        bullets_to_remove.append(bullet)
+                # Handle piercing logic
+                if 'hit_creatures' not in bullet:
+                    bullet['hit_creatures'] = set()
+                if id(collided_creature) not in bullet['hit_creatures']:
+                    collided_creature.hp -= bullet['damage']
+                    bullet['hit_creatures'].add(id(collided_creature))
+                    bullet['pierces_left'] -= 1
+                if bullet['pierces_left'] < 0:
+                    bullets_to_remove.append(bullet)
             else: # Bouncing bullet that has run out of bounces
                 bullets_to_remove.append(bullet)
             continue

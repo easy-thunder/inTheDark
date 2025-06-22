@@ -18,16 +18,53 @@ def handle_events(players, player_weapon_indices, show_creature_hp):
             # --- Weapon switching ---
             elif event.key == pygame.K_1:
                 if len(players[0].character.weapons) > 0:
+                    # Cancel reload on current weapon
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
                     player_weapon_indices[0] = 0
             elif event.key == pygame.K_2:
                 if len(players[0].character.weapons) > 1:
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
                     player_weapon_indices[0] = 1
             elif event.key == pygame.K_3:
                 if len(players[0].character.weapons) > 2:
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
                     player_weapon_indices[0] = 2
             elif event.key == pygame.K_4:
                 if len(players[0].character.weapons) > 3:
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
                     player_weapon_indices[0] = 3
+            elif event.key == pygame.K_5:
+                if len(players[0].character.weapons) > 4:
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
+                    player_weapon_indices[0] = 4
+            elif event.key == pygame.K_6:
+                if len(players[0].character.weapons) > 5:
+                    current_index = player_weapon_indices[0]
+                    current_weapon = players[0].character.weapons[current_index]
+                    current_weapon.is_reloading = False
+                    if hasattr(current_weapon, 'reload_start'):
+                        current_weapon.reload_start = None
+                    player_weapon_indices[0] = 5
             # --- Toggle creature HP bars ---
             elif event.key == pygame.K_h:
                 show_creature_hp = not show_creature_hp
@@ -44,7 +81,7 @@ def handle_events(players, player_weapon_indices, show_creature_hp):
                 # Reset warm-up when fire button is released
                 for player in players:
                     for weapon in player.character.weapons:
-                        if weapon.warm_up_time:
+                        if weapon.uncommon.warm_up_time:
                             weapon.is_warming_up = False
                             weapon.warm_up_start = None
     

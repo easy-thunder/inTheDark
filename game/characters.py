@@ -35,7 +35,7 @@ TESTY = Character(
     hp_regen=0.1,
     ap_regen=0.1,
     revival_time=5,
-    weapons=[ create_missile_striker(), create_ricochet_pistol(),  create_flamethrower(), create_solar_death_beam()],
+    weapons=[ create_rocket_launcher(), create_rusty_pistol(),  create_shotgun(), create_grenade()],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
         WeaponSpecialization.ASSAULT: 4,
