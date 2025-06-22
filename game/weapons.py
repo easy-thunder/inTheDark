@@ -261,17 +261,17 @@ def create_shotgun():
 def create_flamethrower():
     return Weapon(
         name="Inferno Flamethrower",
-        accuracy=20,  # Wide spray pattern
+        accuracy=25,  # Slightly wider spray pattern
         range_=4,  # Short range but devastating
         fire_mode=FireMode.SPRAY,  # Continuous spray
-        fire_rate=120,  # High fire rate for continuous flames
-        damage=3,  # Damage per flame particle
+        fire_rate=180,  # Higher fire rate for more continuous feel
+        damage=2,  # Slightly lower damage per particle but more particles
         clip_size=50,  # Fuel tank capacity
         reload_speed=4.0,  # Slow fuel refill
-        bullet_size=0.15,  # Small flame particles
+        bullet_size=0.12,  # Smaller individual flame particles
         splash=None,  # No splash, but damage over time
         bullet_color=(255, 100, 0),  # Orange flames
-        bullet_speed=6,  # Slower moving flames
+        bullet_speed=5,  # Slightly slower for more dramatic effect
         ammo=100,  # Limited fuel
         traits=["Burning"],  # Special trait for fire damage
         ability=None,
@@ -279,7 +279,7 @@ def create_flamethrower():
         specialization_level=3,
         piercing=0,  # No piercing
         contact_effect=ContactEffect.PIERCE,  # Flames pass through but deal damage
-        volley=3,  # Multiple flame particles per spray
-        spread=45,  # Wide flame cone
+        volley=4,  # More particles per spray for denser flame stream
+        spread=50,  # Wider flame cone
         damage_type=DamageType.FIRE  # Fire damage type for DoT
     ) 

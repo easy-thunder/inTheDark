@@ -47,9 +47,34 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
                 bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
                 bullets.append(bullet)
         elif weapon.fire_mode == FireMode.SPRAY:
-            # Create multiple flame particles for flamethrower
-            for i in range(weapon.volley):
+            # Create multiple flame particles for flamethrower with organic patterns
+            base_angle = math.atan2(player.aim_direction[1], player.aim_direction[0])
+            
+            # Create a cluster of flame particles with organic spread
+            for i in range(weapon.volley * 2):  # Double the particles for more organic feel
+                # Calculate organic spread pattern
+                spread_angle = (weapon.spread / (weapon.volley * 2 - 1)) * i - (weapon.spread / 2)
+                # Add some randomness to make it more flame-like
+                spread_angle += random.uniform(-5, 5)
+                
+                # Convert to radians and apply to base direction
+                spread_rad = math.radians(spread_angle)
+                cos_spread = math.cos(spread_rad)
+                sin_spread = math.sin(spread_rad)
+                dx = player.aim_direction[0] * cos_spread - player.aim_direction[1] * sin_spread
+                dy = player.aim_direction[0] * sin_spread + player.aim_direction[1] * cos_spread
+                
+                # Add some velocity variation for more organic movement
+                speed_variation = random.uniform(0.8, 1.2)
+                
                 bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
+                # Override the direction and speed for more organic flame movement
+                bullet['dx'] = dx
+                bullet['dy'] = dy
+                bullet['speed'] = weapon.bullet_speed * speed_variation
+                bullet['flame_variation'] = random.uniform(0, 2 * math.pi)  # For unique flame animation
+                bullet['flame_size_variation'] = random.uniform(0.7, 1.3)  # Size variation
+                bullet['flame_intensity'] = random.uniform(0.8, 1.2)  # Brightness variation
                 bullets.append(bullet)
         else:
             # Create single bullet for other weapons
@@ -286,6 +311,19 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
             bullet['x'] += bullet['dx'] * bullet['speed']
             bullet['y'] += bullet['dy'] * bullet['speed']
             bullet['distance'] += bullet['speed']
+            
+            # Add organic movement for flame bullets
+            if bullet.get('is_flame'):
+                # Add slight drift to flame movement
+                drift_time = pygame.time.get_ticks() * 0.01 + bullet.get('flame_variation', 0)
+                drift_x = math.sin(drift_time * 0.5) * 0.3
+                drift_y = math.cos(drift_time * 0.7) * 0.3
+                bullet['x'] += drift_x
+                bullet['y'] += drift_y
+                
+                # Gradually slow down flames (they lose energy)
+                bullet['speed'] *= 0.995
+            
             if bullet['distance'] > bullet['range']:
                 bullets_to_remove.append(bullet)
                 continue
