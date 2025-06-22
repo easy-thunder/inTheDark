@@ -141,9 +141,82 @@ def draw_bullets(screen, bullets, camera_x, camera_y, game_x, game_y):
             if missile_size > 1:
                  pygame.draw.circle(screen, bullet['color'], (gx, missile_draw_y), missile_size)
             continue
-
-        # Special flame bullet effects
-        if bullet.get('is_flame'):
+        elif bullet.get('is_orbital_beam'):
+            # --- Draw Solar Death Beam ---
+            # Ground position
+            gx = int(bullet['x'] - camera_x + game_x)
+            gy = int(bullet['y'] - camera_y + game_y)
+            
+            current_time = pygame.time.get_ticks()
+            warm_up_elapsed = (current_time - bullet['warm_up_start']) / 1000.0
+            warm_up_time = bullet.get('warm_up_time', 2.0)
+            
+            if not bullet.get('beam_active', False):
+                # Draw warm-up effects
+                if warm_up_elapsed < warm_up_time:
+                    # Draw charging indicator
+                    charge_progress = warm_up_elapsed / warm_up_time
+                    charge_radius = int(20 + charge_progress * 30)
+                    charge_alpha = int(100 + charge_progress * 155)
+                    
+                    # Draw charging circle
+                    charge_surface = pygame.Surface((charge_radius * 2, charge_radius * 2), pygame.SRCALPHA)
+                    pygame.draw.circle(charge_surface, (255, 255, 0, charge_alpha), (charge_radius, charge_radius), charge_radius)
+                    screen.blit(charge_surface, (gx - charge_radius, gy - charge_radius))
+                    
+                    # Draw "CHARGING" text
+                    font = pygame.font.Font(None, 24)
+                    charge_text = font.render("CHARGING", True, (255, 255, 0))
+                    screen.blit(charge_text, (gx - charge_text.get_width() // 2, gy - 40))
+                continue
+            else:
+                # Draw active solar beam
+                beam_radius = int(bullet.get('splash', 2.0) * 32)  # Convert to pixels
+                beam_elapsed = (current_time - bullet['beam_start_time']) / 1000.0
+                beam_duration = bullet.get('beam_duration', 5.0)
+                beam_intensity = 1.0 - (beam_elapsed / beam_duration)  # Fade as beam expires
+                
+                # Draw main beam with solar flare effects
+                for i in range(3):
+                    flare_radius = beam_radius - i * 3
+                    if flare_radius <= 0:
+                        break
+                    
+                    if i == 0:
+                        color = (255, 255, int(200 * beam_intensity))  # Bright white center
+                    elif i == 1:
+                        color = (255, int(255 * beam_intensity), 0)  # Yellow middle
+                    else:
+                        color = (255, int(150 * beam_intensity), 0)  # Orange edge
+                    
+                    # Add solar flare flicker
+                    flicker = 0.8 + 0.2 * math.sin(current_time * 0.01)
+                    flare_alpha = int(255 * beam_intensity * flicker)
+                    
+                    beam_surface = pygame.Surface((flare_radius * 2, flare_radius * 2), pygame.SRCALPHA)
+                    pygame.draw.circle(beam_surface, (*color, flare_alpha), (flare_radius, flare_radius), flare_radius)
+                    screen.blit(beam_surface, (gx - flare_radius, gy - flare_radius))
+                
+                # Draw solar flare particles
+                for flare in range(8):
+                    flare_angle = (current_time * 0.02 + flare * 45) % 360
+                    flare_radius = beam_radius + 10 + (current_time * 0.01) % 20
+                    flare_x = gx + int(math.cos(math.radians(flare_angle)) * flare_radius)
+                    flare_y = gy + int(math.sin(math.radians(flare_angle)) * flare_radius)
+                    flare_size = int(3 * beam_intensity)
+                    
+                    if flare_size > 0:
+                        pygame.draw.circle(screen, (255, 255, 255), (flare_x, flare_y), flare_size)
+                
+                # Draw beam duration indicator
+                remaining_time = beam_duration - beam_elapsed
+                if remaining_time > 0:
+                    font = pygame.font.Font(None, 20)
+                    time_text = font.render(f"{remaining_time:.1f}s", True, (255, 255, 0))
+                    screen.blit(time_text, (gx - time_text.get_width() // 2, gy + beam_radius + 5))
+                
+                continue
+        elif bullet.get('is_flame'):
             bx = int(bullet['x'] - camera_x + game_x)
             by = int(bullet['y'] - camera_y + game_y)
             

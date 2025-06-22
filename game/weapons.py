@@ -9,6 +9,7 @@ class FireMode(Enum):
     THROWN = auto()
     ORBITAL = auto()
     SPRAY = auto()
+    ORBITAL_BEAM = auto()
 
 class WeaponSpecialization(Enum):
     PRECISION = auto()
@@ -282,4 +283,32 @@ def create_flamethrower():
         volley=4,  # More particles per spray for denser flame stream
         spread=50,  # Wider flame cone
         damage_type=DamageType.FIRE  # Fire damage type for DoT
+    )
+
+def create_solar_death_beam():
+    return Weapon(
+        name="Solar Death Beam",
+        accuracy=5,  # Very precise beam
+        range_=1000,  # Long range orbital weapon
+        fire_mode=FireMode.ORBITAL_BEAM,  # Uses new orbital beam mechanics
+        fire_rate=1,  # Single beam activation
+        damage=8,  # High damage per tick
+        clip_size=1,  # Single beam per clip
+        reload_speed=8.0,  # Long recharge time
+        bullet_size=0.3,  # Beam width
+        splash=2.0,  # Small area of effect
+        bullet_color=(255, 255, 100),  # Bright yellow/white
+        bullet_speed=3,  # Beam fall speed
+        ammo=3,  # Limited uses
+        traits=[],  # No special traits needed
+        ability=None,
+        specialization_type=WeaponSpecialization.EXPLOSIVES,  # Orbital weapon
+        specialization_level=4,
+        piercing=0,  # No piercing
+        contact_effect=ContactEffect.EXPLODE,  # Explosive contact
+        warm_up_time=2.0,  # 2 second charge-up
+        drop_height=800,  # High altitude
+        volley=1,
+        spread=0,
+        damage_type=DamageType.FIRE  # Solar damage
     ) 

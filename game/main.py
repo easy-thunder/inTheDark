@@ -121,7 +121,7 @@ def main():
         cleanup_dead_creatures(creatures)
 
         # --- Update Bullets and Handle Collisions ---
-        bullets, splash_effects = update_bullets(bullets, visible_walls, creatures, splash_effects, players, TILE_SIZE)
+        bullets, splash_effects = update_bullets(bullets, visible_walls, creatures, splash_effects, players, TILE_SIZE, camera_x, camera_y)
         
         # --- Update Burning Effects ---
         update_burning_creatures(creatures)

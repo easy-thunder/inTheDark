@@ -76,6 +76,14 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
                 bullet['flame_size_variation'] = random.uniform(0.7, 1.3)  # Size variation
                 bullet['flame_intensity'] = random.uniform(0.8, 1.2)  # Brightness variation
                 bullets.append(bullet)
+        elif weapon.fire_mode == FireMode.ORBITAL:
+            # Create orbital weapon (missile striker, solar death beam, etc.)
+            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullets.append(bullet)
+        elif weapon.fire_mode == FireMode.ORBITAL_BEAM:
+            # Create orbital beam weapon (solar death beam) - always create, let bullet handle warm-up
+            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullets.append(bullet)
         else:
             # Create single bullet for other weapons
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
@@ -178,6 +186,22 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         # The bullet's (x,y) is the ground target
         bullet['x'] = target_x
         bullet['y'] = target_y
+    elif weapon.fire_mode == FireMode.ORBITAL_BEAM:
+        # Special properties for solar death beam
+        bullet['is_orbital_beam'] = True
+        bullet['beam_duration'] = 5.0  # 5 seconds of beam
+        bullet['beam_start_time'] = pygame.time.get_ticks()
+        bullet['beam_damage_tick'] = 0.2  # Damage every 0.2 seconds
+        bullet['last_damage_time'] = pygame.time.get_ticks()
+        bullet['beam_active'] = False  # Will activate after warm-up
+        bullet['warm_up_start'] = pygame.time.get_ticks()
+        bullet['warm_up_time'] = weapon.warm_up_time  # Charge-up time
+        bullet['mouse_follow'] = True  # Follow mouse cursor
+        
+        # Initial position based on mouse
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        bullet['x'] = mouse_x + camera_x
+        bullet['y'] = mouse_y + camera_y
     elif weapon.fire_mode == FireMode.THROWN:
         # This logic is for thrown weapons with special physics (arcing, rolling)
         bullet['is_grenade'] = True # Keep this flag for movement logic
@@ -245,7 +269,7 @@ def reset_warm_up(players):
                 weapon.is_warming_up = False
                 weapon.warm_up_start = None
 
-def update_bullets(bullets, visible_walls, creatures, splash_effects, players, tile_size=32):
+def update_bullets(bullets, visible_walls, creatures, splash_effects, players, tile_size=32, camera_x=0, camera_y=0):
     """
     Update bullet positions and handle collisions.
     
@@ -256,6 +280,8 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
         splash_effects: List of splash effects
         players: List of Player objects
         tile_size: Size of tiles in pixels
+        camera_x: X coordinate of the camera
+        camera_y: Y coordinate of the camera
     
     Returns:
         Tuple of (updated_bullets, updated_splash_effects)
@@ -263,6 +289,7 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
     bullets_to_remove = []
     for bullet in bullets[:]:
         if bullet.get('is_orbital'):
+            # Regular orbital missile logic
             bullet['z'] -= bullet['fall_speed']
             if bullet['z'] <= 0:
                 # Landed, now explode
@@ -272,8 +299,52 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 continue
             # Skip all other physics for orbital projectiles
             continue
-
-        if bullet.get('is_grenade'):
+        elif bullet.get('is_orbital_beam'):
+            # Handle solar death beam mechanics
+            current_time = pygame.time.get_ticks()
+            warm_up_elapsed = (current_time - bullet['warm_up_start']) / 1000.0
+            warm_up_time = bullet.get('warm_up_time', 2.0)
+            
+            # Debug: Print warm-up status
+            if not bullet.get('beam_active', False):
+                print(f"Solar beam warm-up: {warm_up_elapsed:.1f}s / {warm_up_time}s")
+            
+            if not bullet.get('beam_active', False) and warm_up_elapsed >= warm_up_time:
+                # Warm-up complete, activate beam
+                print("Solar beam ACTIVATED!")
+                bullet['beam_active'] = True
+                bullet['beam_start_time'] = current_time
+                bullet['last_damage_time'] = current_time  # Start dealing damage immediately
+            
+            if bullet.get('beam_active', False):
+                # Update mouse position for beam following
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                bullet['x'] = mouse_x + camera_x
+                bullet['y'] = mouse_y + camera_y
+                
+                # Check if beam duration has expired
+                beam_elapsed = (current_time - bullet['beam_start_time']) / 1000.0
+                if beam_elapsed >= bullet['beam_duration']:
+                    # Beam expired, remove it
+                    print("Solar beam EXPIRED!")
+                    bullets_to_remove.append(bullet)
+                    continue
+                
+                # Apply continuous damage to creatures in beam area
+                damage_elapsed = (current_time - bullet['last_damage_time']) / 1000.0
+                if damage_elapsed >= bullet['beam_damage_tick']:
+                    # Deal damage to creatures in beam area
+                    beam_radius = bullet.get('splash', 2.0) * tile_size
+                    for creature in creatures:
+                        distance = math.sqrt((creature.rect.centerx - bullet['x'])**2 + 
+                                           (creature.rect.centery - bullet['y'])**2)
+                        if distance <= beam_radius:
+                            creature.hp -= bullet['damage']
+                    bullet['last_damage_time'] = current_time
+            
+            # Don't remove the beam - let it continue until duration expires
+            continue
+        elif bullet.get('is_grenade'):
             now = pygame.time.get_ticks()
             if now - bullet['creation_time'] >= bullet['detonation_time'] * 1000:
                 if bullet.get('splash'):
