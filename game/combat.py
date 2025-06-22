@@ -97,6 +97,20 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
             player.reload_weapon(player_weapon_indices[current_player_index])
     
+    # Special case for orbital beam weapons - they can fire even during warm-up
+    elif weapon.fire_mode == FireMode.ORBITAL_BEAM and weapon.current_clip > 0 and not weapon.is_reloading:
+        # Create orbital beam weapon immediately, let bullet handle its own warm-up
+        bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+        bullets.append(bullet)
+        
+        # Update weapon state
+        weapon.current_clip -= 1
+        weapon.last_shot_time = now
+        
+        # Automatic reload if clip is empty and reserve ammo (or infinite)
+        if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.ammo is None or weapon.ammo > 0)):
+            player.reload_weapon(player_weapon_indices[current_player_index])
+    
     return bullets
 
 def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera_y=0, pellet_index=0):
@@ -189,9 +203,9 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
     elif weapon.fire_mode == FireMode.ORBITAL_BEAM:
         # Special properties for solar death beam
         bullet['is_orbital_beam'] = True
-        bullet['beam_duration'] = 5.0  # 5 seconds of beam
+        bullet['beam_duration'] = getattr(weapon, 'beam_duration', 5.0)  # Use weapon's duration
         bullet['beam_start_time'] = pygame.time.get_ticks()
-        bullet['beam_damage_tick'] = 0.2  # Damage every 0.2 seconds
+        bullet['beam_damage_tick'] = getattr(weapon, 'beam_damage_tick', 0.2)  # Use weapon's tick rate
         bullet['last_damage_time'] = pygame.time.get_ticks()
         bullet['beam_active'] = False  # Will activate after warm-up
         bullet['warm_up_start'] = pygame.time.get_ticks()

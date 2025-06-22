@@ -31,7 +31,7 @@ class DamageType(Enum):
     ICE = auto()
 
 class Weapon:
-    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None, volley=1, spread=0, damage_type=DamageType.PHYSICAL):
+    def __init__(self, name, accuracy, range_, fire_mode, fire_rate, damage, clip_size, reload_speed, bullet_size=0.2, splash=None, bullet_color=(200,200,0), bullet_speed=12, ammo=None, traits=None, ability=None, specialization_type=None, specialization_level=1, piercing=0, warm_up_time=None, detonation_time=None, contact_effect=ContactEffect.PIERCE, bounce_limit=None, drop_height=None, volley=1, spread=0, damage_type=DamageType.PHYSICAL, beam_duration=5.0, beam_damage_tick=0.2):
         self.name = name
         # Accuracy: 0 (perfect) to 360 (random); internally, 0-1 is easier, so we use 0-1
         self.accuracy = accuracy / 360 if accuracy > 1 else accuracy
@@ -59,6 +59,8 @@ class Weapon:
         self.volley = volley  # Number of pellets for shotguns
         self.spread = spread  # Spread angle in degrees for shotguns
         self.damage_type = damage_type  # Type of damage (physical, fire, ice, etc.)
+        self.beam_duration = beam_duration  # Duration for beam weapons
+        self.beam_damage_tick = beam_damage_tick  # Damage tick rate for beam weapons
         # State
         self.current_clip = clip_size
         self.is_reloading = False
@@ -310,5 +312,7 @@ def create_solar_death_beam():
         drop_height=800,  # High altitude
         volley=1,
         spread=0,
-        damage_type=DamageType.FIRE  # Solar damage
+        damage_type=DamageType.FIRE,  # Solar damage
+        beam_duration=20.0,  # Duration of the beam in seconds
+        beam_damage_tick=0.2  # Damage tick rate in seconds
     ) 
