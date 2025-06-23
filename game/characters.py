@@ -66,7 +66,7 @@ TESTY = Character(
         create_missile_striker(),   
         # create_flamethrower(),
         create_mini_gun(),
-        create_inferno_shotgun(),
+        create_ricochet_pistol(),
         # create_ice_sprayer(),
         create_the_kraken(),
         create_serpents_breath(),

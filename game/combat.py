@@ -412,6 +412,43 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
             # Don't remove the beam - let it continue until duration expires
             continue
             
+        elif bullet.get('is_grenade'):
+            now = pygame.time.get_ticks()
+            # Detonate after timer
+            if now - bullet['creation_time'] >= bullet['detonation_time'] * 1000:
+                if bullet.get('splash'):
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
+                bullets_to_remove.append(bullet)
+                continue
+            # Handle movement (arc, then roll)
+            if bullet['phase'] == 'flying':
+                bullet['x'] += bullet['velocity_x']
+                bullet['y'] += bullet['velocity_y']
+                bullet['distance_traveled'] += math.hypot(bullet['velocity_x'], bullet['velocity_y'])
+                # Use dot product to check if passed landing point
+                start_x, start_y = bullet['start_x'], bullet['start_y']
+                landing_x, landing_y = bullet['landing_x'], bullet['landing_y']
+                dir_x, dir_y = bullet['direction_vec']
+                to_current = ((bullet['x'] - start_x), (bullet['y'] - start_y))
+                to_landing = ((landing_x - start_x), (landing_y - start_y))
+                dot = to_current[0]*to_landing[0] + to_current[1]*to_landing[1]
+                if dot >= 0 and bullet['distance_traveled'] >= bullet['travel_distance']:
+                    bullet['phase'] = 'rolling'
+                    bullet['velocity_x'] = bullet['roll_dx'] * 2
+                    bullet['velocity_y'] = bullet['roll_dy'] * 2
+            elif bullet['phase'] == 'rolling':
+                bullet['x'] += bullet['velocity_x']
+                bullet['y'] += bullet['velocity_y']
+                bullet['roll_left'] -= math.hypot(bullet['velocity_x'], bullet['velocity_y'])
+                bullet['velocity_x'] *= 0.92
+                bullet['velocity_y'] *= 0.92
+                if bullet['roll_left'] <= 0 or (abs(bullet['velocity_x']) < 0.2 and abs(bullet['velocity_y']) < 0.2):
+                    bullet['velocity_x'] = 0
+                    bullet['velocity_y'] = 0
+                    bullet['phase'] = 'stopped'
+            # No wall/creature collision for grenades (they only explode on timer)
+            continue
+            
         else:
             # Handle regular bullets (existing logic)
             # Homing logic
