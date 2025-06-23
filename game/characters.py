@@ -67,6 +67,7 @@ TESTY = Character(
         # create_apocalypse_engine(),
         create_ricocheting_venom(),
         create_poison_dart_gun(),
+        create_solar_death_beam(),
         # create_the_kraken(),
         # create_comets_fury(),
 

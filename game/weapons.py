@@ -274,7 +274,7 @@ def create_solar_death_beam():
         clip_size=1,
         reload_speed=8.0,
         bullet_size=0.3,
-        bullet_color=(255, 255, 100),
+        bullet_color=(74, 100, 200),
         bullet_speed=3,
         ammo=3,
         specialization_type=WeaponSpecialization.EXPLOSIVES,
