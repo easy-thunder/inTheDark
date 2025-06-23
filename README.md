@@ -5,6 +5,7 @@ This is a continuous, evolving project—new features and creatures are added re
 
 ---
 
+
 ## Features
 
 - Procedurally generated, infinite world
@@ -19,9 +20,9 @@ This is a continuous, evolving project—new features and creatures are added re
 
 ## Requirements
 
-- **Python:** 3.13 (or compatible 3.x version)
-- **Pygame:** 2.6.1
-- **perlin-noise:** 1.13
+- Python 3.8 or newer (Python 3.13+ recommended)
+- [pygame](https://www.pygame.org/) (version 2.6.1 or newer)
+- [perlin-noise](https://pypi.org/project/perlin-noise/) (version 1.13 or newer)
 
 Install dependencies with:
 ```bash
@@ -44,6 +45,9 @@ This ensures all imports work correctly.
 
 - **Player 1:** WASD
 - **Player 2:** Arrow keys
+- "space" key or left click to fire weapons
+- "R" to reload
+- 1-6 to swap weapons
 
 ---
 
@@ -55,16 +59,24 @@ This ensures all imports work correctly.
 - `game/ai/attacks.py` — AI attack profiles
 - `game/world.py` — World generation logic
 - `game/stats/` — Persistent stats and tracking
-- `assets/fonts/` — Fonts for UI
 
 ---
 
 ## Notes
 
-- This is a continuous project—expect frequent changes and new features!
-- For best results, use the latest version of Python 3.13 and Pygame.
-- If you encounter import errors, always run the game as a module:  
-  `python -m game.main` from the project root.
+- This game is currently single-player. You can enable multiplayer by going to the players array in main.py and uncommenting out the second player. There is no targeting system for him yet though.
+
+## Future Improvements
+This project is under active development, and there are several exciting features planned for future releases:
+
+- **Enhanced Visuals:** Import custom images and use mesh-based outlines for creatures and characters to create a more visually appealing and dynamic UI.
+- **Dynamic Enemy Scaling:** Implement progressive enemy spawning, with increasing difficulty as time passes and as players venture further from the starting area.
+- **Barriers and Cover:** Add destructible and indestructible barriers that both players and AI can use for cover and tactical gameplay.
+- **Cave and Room System:** Introduce a cave system with hand-crafted rooms interspersed within the procedurally generated world, providing unique and memorable exploration experiences.
+- **Day/Night Cycle:** Add a day and night system, including limited player vision at night and the use of flashlights and lanterns to navigate the darkness.
+- **Abilities and Crowd Control:** Develop an abilities system, allowing players to deploy walls, traps, and other crowd control effects, with each character having unique abilities and playstyles.
+
+These improvements aim to create a richer, more immersive, and replayable experience for players.
 
 ---
 

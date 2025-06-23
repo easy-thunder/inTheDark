@@ -60,7 +60,7 @@ def main():
     # Use default character 'testy'
     players = [
         Player(player_start_pos[0], player_start_pos[1], copy.deepcopy(TESTY), TILE_SIZE),
-        Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], copy.deepcopy(TESTY), TILE_SIZE)
+        # Player(player_start_pos[0] + TILE_SIZE * 2, player_start_pos[1], copy.deepcopy(TESTY), TILE_SIZE)
     ]
     player_weapon_indices = [0, 0]  # [player1_weapon_index, player2_weapon_index]
 

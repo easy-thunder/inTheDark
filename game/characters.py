@@ -79,17 +79,17 @@ TESTY = Character(
         # --- Standard Weapons ---
 
         # --- New Batch: Toggle below ---
-
+        create_serpents_breath(),
         create_solar_death_beam(),
         create_grenade(),
-        create_ricochet_pistol(),
+        create_piercing_laser_smg(),
         create_gatling_freezer(),
-        create_wall_of_lead(),
-        create_serpents_breath()
+        create_missile_striker(),
+
     ],
     specializations={
-        WeaponSpecialization.EXPLOSIVES: 5,
-        WeaponSpecialization.ASSAULT: 4,
+        WeaponSpecialization.EXPLOSIVES: 1,
+        WeaponSpecialization.ASSAULT: 1,
         WeaponSpecialization.SHOTGUNS: 1,
     }
 )
