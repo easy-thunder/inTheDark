@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from game.weapons import FireMode, ContactEffect, DamageType
+from game.weapons import FireMode, ContactEffect, EnemyContactEffect
 
 def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0):
     """
@@ -161,16 +161,14 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         'contact_effect': weapon.common.contact_effect,
         'bounces': 0,
         'bounce_limit': bounce_limit,
-        'damage_type': weapon.common.damage_type,
-        'pierces_left': piercing
+        'enemy_effects': weapon.common.enemy_effects,
+        'pierces_left': piercing,
+        'knockback_force': weapon.uncommon.knockback_force if hasattr(weapon.uncommon, 'knockback_force') else 0
     }
     
-    # Add flame-specific properties for fire damage
-    if weapon.common.damage_type == DamageType.FIRE:
-        bullet['burn_duration'] = 3.0  # 3 seconds of burn damage
-        bullet['burn_damage'] = weapon.common.damage
-        bullet['burn_tick_rate'] = 0.5  # Damage every 0.5 seconds
-        bullet['burned_creatures'] = set()  # Track which creatures are burning
+    # Add effect-specific properties
+    if EnemyContactEffect.FIRE in weapon.common.enemy_effects:
+        bullet['burn_damage'] = weapon.common.damage * 0.3  # 30% of base damage
     
     if weapon.common.fire_mode == FireMode.SPRAY:
         bullet['is_spray_particle'] = True
@@ -284,7 +282,7 @@ def create_beam(x, y, angle, weapon):
         'color': weapon.common.bullet_color,
         'range': weapon.common.range * 32,  # Use weapon's actual range
         'piercing': weapon.uncommon.piercing or 0,
-        'damage_type': weapon.common.damage_type,
+        'enemy_effects': weapon.common.enemy_effects,
         'hits': set(),  # Track creatures hit to prevent multiple hits
         'trail_points': [(x, y)],  # Store trail points for visual effect
         'type': 'beam'
@@ -344,10 +342,8 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
             for creature in creatures:
                 if creature.id not in bullet['hits'] and creature.rect.clipline((prev_x, prev_y), (bullet['x'], bullet['y'])):
                     bullet['hits'].add(creature.id)
-                    creature.hp -= bullet['damage']
-                    
-                    if bullet['damage_type'] == DamageType.ICE:
-                        creature.apply_slow(duration=3000, factor=0.5)
+                    # Apply all effects for beam weapons
+                    apply_creature_effects(bullet, creature)
                     
                     # Beams don't get destroyed by creature hits due to high pierce
                     if len(bullet['hits']) >= bullet['piercing']:
@@ -406,7 +402,8 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                         distance = math.sqrt((creature.rect.centerx - bullet['x'])**2 + 
                                            (creature.rect.centery - bullet['y'])**2)
                         if distance <= beam_radius:
-                            creature.hp -= bullet['damage']
+                            # Apply all effects for orbital beam
+                            apply_creature_effects(bullet, creature)
                     bullet['last_damage_time'] = current_time
             
             # Don't remove the beam - let it continue until duration expires
@@ -726,22 +723,16 @@ def handle_piercing_collision(bullet, creature, players):
 def handle_burning_effects(bullet, creature, players):
     """
     Handle burning damage over time effects for flame weapons.
-    
-    Args:
-        bullet: Bullet dictionary with flame properties
-        creature: Creature object that was hit
-        players: List of Player objects
-    
-    Returns:
-        True if bullet should be removed, False if it should continue
     """
-    if not bullet.get('is_flame') or bullet.get('damage_type') != DamageType.FIRE:
+    if not bullet.get('is_flame') or EnemyContactEffect.FIRE not in bullet['enemy_effects']:
         return False
     
     creature_id = id(creature)
     
     # Initialize burning data for this creature if not already burning
-    if creature_id not in bullet['burned_creatures']:
+    if creature_id not in bullet.get('burned_creatures', set()):
+        if not hasattr(bullet, 'burned_creatures'):
+            bullet['burned_creatures'] = set()
         bullet['burned_creatures'].add(creature_id)
         
         # Apply initial damage
@@ -754,8 +745,8 @@ def handle_burning_effects(bullet, creature, players):
         # Add or update burning effect
         creature.burning_effects[creature_id] = {
             'damage': bullet['burn_damage'],
-            'duration': bullet['burn_duration'],
-            'tick_rate': bullet['burn_tick_rate'],
+            'duration': 3.0,  # 3 seconds burn duration
+            'tick_rate': 0.5,  # Damage every 0.5 seconds
             'start_time': pygame.time.get_ticks(),
             'last_tick': pygame.time.get_ticks()
         }
@@ -850,27 +841,63 @@ def update_poison_effects(creatures):
                 del creature.poison_effects[i]
 
 def apply_creature_effects(bullet, creature):
-    # Always apply direct damage (unless poison, which is handled below)
-    if bullet['damage_type'] == DamageType.POISON:
-        apply_poison(creature, bullet['damage'])
-        creature.hp -= 1  # Minimal impact damage
-    else:
-        creature.hp -= bullet['damage']
+    """Apply all enemy effects from a bullet to a creature."""
+    # Always apply direct damage first
+    creature.hp -= bullet['damage']
     
-    # Fire effect
-    if bullet['damage_type'] == DamageType.FIRE:
-        # Always initialize burning_effects as a dict
-        if not hasattr(creature, 'burning_effects') or creature.burning_effects is None:
-            creature.burning_effects = {}
-        # Always refresh or add burning effect for this creature
-        creature.burning_effects[id(creature)] = {
-            'damage': bullet.get('burn_damage', bullet['damage']),
-            'duration': 3.0,
-            'tick_rate': 0.5,
-            'start_time': pygame.time.get_ticks(),
-            'last_tick': pygame.time.get_ticks()
-        }
-    # Freeze effect
-    if bullet['damage_type'] == DamageType.ICE:
-        if hasattr(creature, 'apply_slow'):
-            creature.apply_slow(duration=3000, factor=0.5) 
+    # Apply each enemy effect
+    for effect in bullet['enemy_effects']:
+        if effect == EnemyContactEffect.PHYSICAL:
+            continue  # Physical damage already applied
+            
+        elif effect == EnemyContactEffect.FIRE:
+            # Initialize burning_effects as a dict
+            if not hasattr(creature, 'burning_effects') or creature.burning_effects is None:
+                creature.burning_effects = {}
+            # Add or refresh burning effect
+            creature.burning_effects[id(creature)] = {
+                'damage': bullet.get('burn_damage', bullet['damage'] * 0.3),  # 30% of base damage as burn
+                'duration': 3.0,
+                'tick_rate': 0.5,
+                'start_time': pygame.time.get_ticks(),
+                'last_tick': pygame.time.get_ticks()
+            }
+            
+        elif effect == EnemyContactEffect.ICE:
+            if hasattr(creature, 'apply_slow'):
+                creature.apply_slow(duration=3000, factor=0.5)
+                
+        elif effect == EnemyContactEffect.POISON:
+            apply_poison(creature, bullet['damage'])
+            
+        elif effect == EnemyContactEffect.KNOCKBACK:
+            # Skip knockback for beam weapons
+            if bullet.get('type') == 'beam':
+                continue
+
+            # Initialize knockback attributes if they don't exist
+            if not hasattr(creature, 'knockback_dx'):
+                creature.knockback_dx = 0
+                creature.knockback_dy = 0
+                creature.knockback_resistance = getattr(creature, 'knockback_resistance', 1.0)
+
+            knockback_force = bullet.get('knockback_force', 10)  # Default force if not specified
+            
+            if bullet.get('is_orbital_beam') or bullet.get('contact_effect') == ContactEffect.EXPLODE:
+                # Knockback from center point for explosions and orbital beams
+                dx = creature.rect.centerx - bullet['x']
+                dy = creature.rect.centery - bullet['y']
+            else:
+                # Knockback in bullet's direction for regular bullets
+                dx = bullet['dx']
+                dy = bullet['dy']
+            
+            # Normalize direction vector
+            length = math.sqrt(dx * dx + dy * dy)
+            if length > 0:
+                dx = dx / length
+                dy = dy / length
+                
+                # Apply knockback force (reduced by creature's knockback resistance)
+                creature.knockback_dx = dx * knockback_force * (1 - creature.knockback_resistance)
+                creature.knockback_dy = dy * knockback_force * (1 - creature.knockback_resistance) 

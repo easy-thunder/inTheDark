@@ -35,15 +35,49 @@ class Creature:
         self.width = int(player_size * self.SIZE_MAP[self.size_str])
         self.height = int(player_size * self.SIZE_MAP[self.size_str])
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+        self.id = next(creature_id_counter)
+        self.knockback_dx = 0
+        self.knockback_dy = 0
+        self.knockback_resistance = 1.0  # Can be overridden by specific creatures
+        self.knockback_friction = 0.85  # Knockback decay rate
 
-    def update(self, players):
-        """Update creature's state by executing its AI profiles."""
-        # Only consider living players
-        living_players = [p for p in players if not p.dead]
+    def update(self, dt, walls, players):
+        # Apply knockback movement first
+        if abs(self.knockback_dx) > 0.1 or abs(self.knockback_dy) > 0.1:
+            # Store original position
+            original_x = self.rect.x
+            original_y = self.rect.y
+            
+            # Try to move with knockback
+            self.rect.x += self.knockback_dx
+            # Check wall collisions on X axis
+            for wall in walls:
+                if self.rect.colliderect(wall):
+                    if self.knockback_dx > 0:
+                        self.rect.right = wall.left
+                    else:
+                        self.rect.left = wall.right
+                    self.knockback_dx *= -0.5  # Bounce with reduced force
+            
+            self.rect.y += self.knockback_dy
+            # Check wall collisions on Y axis
+            for wall in walls:
+                if self.rect.colliderect(wall):
+                    if self.knockback_dy > 0:
+                        self.rect.bottom = wall.top
+                    else:
+                        self.rect.top = wall.bottom
+                    self.knockback_dy *= -0.5  # Bounce with reduced force
+            
+            # Apply friction to knockback
+            self.knockback_dx *= self.knockback_friction
+            self.knockback_dy *= self.knockback_friction
+        
+        # Continue with normal movement
         if self.movement_profile:
-            self.movement_profile.move(self, living_players)
+            self.movement_profile.move(self, players)
         if self.attack_profile:
-            self.attack_profile.execute(self, living_players)
+            self.attack_profile.execute(self, players)
 
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
         """Draws the creature relative to the camera."""

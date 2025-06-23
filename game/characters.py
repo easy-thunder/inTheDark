@@ -34,7 +34,10 @@ from game.weapons import (
     create_ricochet_minigun,
     create_piercing_laser_smg,
     create_poison_spray_blaster,
-    WeaponSpecialization
+    WeaponSpecialization,
+
+    create_knockback_gun,
+    create_combo_gun
 )
 
 DEFAULT_SPECIALIZATIONS = {
@@ -76,15 +79,23 @@ TESTY = Character(
         # --- Standard Weapons ---
 
         # --- New Batch: Toggle below ---
-        create_grenade(),
-        create_piercing_laser_smg(),
-        create_comets_fury(),
-        create_gatling_freezer(),
-        create_glacial_torrent(),
+
+        create_knockback_gun(),
+        create_combo_gun(),
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
         WeaponSpecialization.ASSAULT: 4,
         WeaponSpecialization.SHOTGUNS: 1,
     }
-) 
+)
+
+def create_testy():
+    """Create the TESTY character for testing weapons."""
+    weapons = [
+        create_knockback_gun(),  # Test knockback alone
+        create_combo_gun(),      # Test combined effects
+        create_shotgun(),
+        # ... rest of weapons commented out for testing ...
+    ]
+    return Character("TESTY", "The Weapon Tester", weapons=weapons) 
