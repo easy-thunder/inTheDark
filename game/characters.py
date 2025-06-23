@@ -1,4 +1,18 @@
-from game.weapons import create_rusty_pistol, create_rocket_launcher, create_mini_gun, create_grenade, create_ricochet_pistol, create_missile_striker, create_shotgun, create_flamethrower, create_solar_death_beam, WeaponSpecialization
+from game.weapons import (
+    create_rusty_pistol,
+    create_rocket_launcher,
+    create_mini_gun,
+    create_grenade,
+    create_ricochet_pistol,
+    create_missile_striker,
+    create_shotgun,
+    create_flamethrower,
+    create_solar_death_beam,
+    create_freeze_gun,
+    create_ice_sprayer,
+    create_laser_beam,
+    WeaponSpecialization
+)
 
 DEFAULT_SPECIALIZATIONS = {
     WeaponSpecialization.PRECISION: 1,
@@ -35,7 +49,12 @@ TESTY = Character(
     hp_regen=0.1,
     ap_regen=0.1,
     revival_time=5,
-    weapons=[ create_rocket_launcher(), create_rusty_pistol(),  create_shotgun(), create_grenade()],
+    weapons=[
+        create_solar_death_beam(),
+        create_flamethrower(),
+        create_missile_striker(),
+        create_laser_beam()
+    ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
         WeaponSpecialization.ASSAULT: 4,

@@ -1,10 +1,11 @@
 import pygame
 import sys
 import copy
+import random
 from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
-from game.creatures import create_thorny_venom_thistle
+from game.creatures import create_zombie_cat
 from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures
 from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
@@ -65,11 +66,12 @@ def main():
 
     # --- Creature Management ---
     creatures = []
-    # Spawn three thorny venom thistles in a line for testing piercing and explosive weapons
-    thistle1 = create_thorny_venom_thistle(player_start_pos[0] + TILE_SIZE * 6, player_start_pos[1] + TILE_SIZE * 6, PLAYER_SIZE)
-    thistle2 = create_thorny_venom_thistle(player_start_pos[0] + TILE_SIZE * 8, player_start_pos[1] + TILE_SIZE * 6, PLAYER_SIZE)
-    thistle3 = create_thorny_venom_thistle(player_start_pos[0] + TILE_SIZE * 10, player_start_pos[1] + TILE_SIZE * 6, PLAYER_SIZE)
-    creatures.extend([thistle1, thistle2, thistle3])
+    for _ in range(5):
+        creatures.append(create_zombie_cat(
+            x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
+            y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
+            size=PLAYER_SIZE
+        ))
     
     current_max_distance = 0
     start_ticks = pygame.time.get_ticks()
@@ -120,7 +122,7 @@ def main():
         cleanup_dead_creatures(creatures)
 
         # --- Update Bullets and Handle Collisions ---
-        bullets, splash_effects = update_bullets(bullets, visible_walls, creatures, splash_effects, players, TILE_SIZE, camera_x, camera_y)
+        bullets, splash_effects = update_bullets(bullets, creatures, visible_walls, 1/60, camera_x, camera_y)
         
         # --- Update Burning Effects ---
         update_burning_creatures(creatures)

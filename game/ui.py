@@ -124,7 +124,34 @@ def draw_creatures(screen, creatures, camera_x, camera_y, game_x, game_y, show_c
 def draw_bullets(screen, bullets, camera_x, camera_y, game_x, game_y):
     """Draw all active bullets."""
     for bullet in bullets:
-        if bullet.get('is_orbital'):
+        if bullet.get('type') == 'beam':
+            # Draw beam trail
+            trail_points = bullet.get('trail_points', [])
+            if len(trail_points) >= 2:
+                # Convert trail points to screen coordinates
+                screen_points = []
+                for x, y in trail_points:
+                    screen_x = x - camera_x + game_x
+                    screen_y = y - camera_y + game_y
+                    screen_points.append((screen_x, screen_y))
+                
+                # Draw trail with fading effect
+                for i in range(len(screen_points) - 1):
+                    # Fade from bright at the end to dim at the start
+                    alpha = int(255 * (i / len(screen_points)))
+                    trail_color = (*bullet['color'], alpha)
+                    
+                    # Draw the line segment with thickness
+                    pygame.draw.line(screen, bullet['color'], screen_points[i], screen_points[i + 1], 
+                                   max(1, int(bullet['size'] * 2)))
+            
+            # Draw current beam position (bright center)
+            screen_x = bullet['x'] - camera_x + game_x
+            screen_y = bullet['y'] - camera_y + game_y
+            pygame.draw.circle(screen, bullet['color'], (int(screen_x), int(screen_y)), 
+                             max(1, int(bullet['size'] * 3)))
+            continue
+        elif bullet.get('is_orbital'):
             # --- Draw Orbital Strike ---
             # Ground position
             gx = int(bullet['x'] - camera_x + game_x)

@@ -12,6 +12,8 @@ class FireMode(Enum):
     ORBITAL = auto()
     SPRAY = auto()
     ORBITAL_BEAM = auto()
+    MELEE = auto()
+    BEAM = auto()
 
 class WeaponSpecialization(Enum):
     PRECISION = auto()
@@ -34,6 +36,7 @@ class DamageType(Enum):
 
 @dataclass
 class CommonStats:
+    name: str
     accuracy: float
     range: float
     damage: float
@@ -60,6 +63,8 @@ class UncommonStats:
     detonation_time: Optional[float] = None
     splash: Optional[float] = None
     piercing: Optional[int] = None
+    pellets: Optional[int] = None
+    spray_angle: Optional[float] = None
 
 @dataclass
 class UniqueStats:
@@ -83,6 +88,7 @@ class Weapon:
 
 def create_rusty_pistol():
     common = CommonStats(
+        name="Rusty Pistol",
         accuracy=30/360,
         range=10,
         damage=2,
@@ -104,6 +110,7 @@ def create_rusty_pistol():
 
 def create_rocket_launcher():
     common = CommonStats(
+        name="Rocket Launcher",
         accuracy=5/360,
         range=12,
         damage=50,
@@ -125,6 +132,7 @@ def create_rocket_launcher():
 
 def create_mini_gun():
     common = CommonStats(
+        name="Minigun",
         accuracy=15/360,
         range=8,
         damage=1,
@@ -146,6 +154,7 @@ def create_mini_gun():
 
 def create_grenade():
     common = CommonStats(
+        name="Grenade",
         accuracy=5/360,
         range=12,
         damage=25,
@@ -167,6 +176,7 @@ def create_grenade():
 
 def create_ricochet_pistol():
     common = CommonStats(
+        name="Ricochet Pistol",
         accuracy=10/360,
         range=15,
         damage=1.5,
@@ -188,6 +198,7 @@ def create_ricochet_pistol():
 
 def create_missile_striker():
     common = CommonStats(
+        name="Missile Striker",
         accuracy=15/360,
         range=1000,
         damage=50,
@@ -209,6 +220,7 @@ def create_missile_striker():
 
 def create_shotgun():
     common = CommonStats(
+        name="Shotgun",
         accuracy=5/360,
         range=6,
         damage=8,
@@ -230,6 +242,7 @@ def create_shotgun():
 
 def create_flamethrower():
     common = CommonStats(
+        name="Flamethrower",
         accuracy=25/360,
         range=4,
         damage=2,
@@ -251,6 +264,7 @@ def create_flamethrower():
 
 def create_solar_death_beam():
     common = CommonStats(
+        name="Solar Death Beam",
         accuracy=5/360,
         range=1000,
         damage=8,
@@ -269,4 +283,70 @@ def create_solar_death_beam():
     )
     uncommon = UncommonStats(warm_up_time=2.0, splash=2.0, drop_height=800)
     unique = UniqueStats(beam_duration=5.0, beam_damage_tick=0.2)
-    return Weapon(common, uncommon, unique) 
+    return Weapon(common, uncommon, unique)
+
+def create_freeze_gun():
+    common = CommonStats(
+        name="Freeze Gun",
+        accuracy=10/360,
+        range=8,
+        damage=1,
+        fire_rate=120,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=50,
+        reload_speed=3.0,
+        bullet_size=0.2,
+        bullet_color=(173, 216, 230),
+        bullet_speed=10,
+        ammo=200,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(piercing=0)
+    return Weapon(common, uncommon)
+
+def create_ice_sprayer():
+    common = CommonStats(
+        name="Ice Sprayer",
+        accuracy=20/360,
+        range=5,
+        damage=0.5,
+        fire_rate=150,
+        fire_mode=FireMode.SPRAY,
+        clip_size=100,
+        reload_speed=4.0,
+        bullet_size=0.15,
+        bullet_color=(135, 206, 250), # Light Sky Blue
+        bullet_speed=12,
+        ammo=300,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(pellets=5, spray_angle=15, piercing=0)
+    return Weapon(common, uncommon)
+
+def create_laser_beam():
+    common = CommonStats(
+        name="Laser Beam",
+        accuracy=0,
+        range=1000, # Very long range
+        damage=2,
+        fire_rate=60,
+        fire_mode=FireMode.BEAM,
+        clip_size=20,
+        reload_speed=3.0,
+        bullet_size=0.2, # Represents beam thickness
+        bullet_color=(255, 0, 0), # Red
+        bullet_speed=0, # Not applicable for a beam
+        ammo=100,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(piercing=10000)
+    return Weapon(common, uncommon) 

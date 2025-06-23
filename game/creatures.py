@@ -3,6 +3,9 @@ from game.ai.movement import DirectApproach
 from game.ai.attacks import MeleeCollisionAttack
 import math
 import random
+import itertools
+
+creature_id_counter = itertools.count()
 
 class Creature:
     """A flexible class for any non-player character in the game."""
@@ -49,70 +52,55 @@ class Creature:
 
 class ZombieCat:
     def __init__(self, x, y, size):
+        self.id = next(creature_id_counter)
         self.x = x
         self.y = y
-        self.width = size
-        self.height = size
-        self.rect = pygame.Rect(x, y, size, size)
+        self.width = int(size * 0.8)
+        self.height = int(size * 0.8)
+        self.rect = pygame.Rect(x, y, self.width, self.height)
         self.hp = 15
         self.max_hp = 15
-        self.speed = 1
+        self.original_speed = 2.0
+        self.speed = 2.0
         self.damage = 5
-        self.last_attack_time = 0
-        self.attack_cooldown = 1000  # 1 second
-        self.aggro_range = 200
-        self.attack_range = 30
-    
+        self.movement_profile = DirectApproach()
+        self.attack_profile = MeleeCollisionAttack(cooldown=1000)
+        
+        # Status Effect Attributes
+        self.is_slowed = False
+        self.slow_duration = 0
+        self.slow_timer = 0
+        self.slow_color = (173, 216, 230) # Icy blue
+
+    def apply_slow(self, duration, factor):
+        if not self.is_slowed:
+            self.speed *= factor
+        self.is_slowed = True
+        self.slow_duration = duration
+        self.slow_timer = pygame.time.get_ticks()
+
     def update(self, players):
-        if self.hp <= 0:
-            return
-        
-        # Find closest living player
-        closest_player = None
-        closest_distance = float('inf')
-        
-        for player in players:
-            if not player.dead:
-                distance = math.hypot(player.x - self.x, player.y - self.y)
-                if distance < closest_distance:
-                    closest_distance = distance
-                    closest_player = player
-        
-        if closest_player is None:
-            return
-        
-        # Check if in attack range
-        if closest_distance <= self.attack_range:
-            now = pygame.time.get_ticks()
-            if now - self.last_attack_time >= self.attack_cooldown:
-                closest_player.take_damage(self.damage)
-                self.last_attack_time = now
-            return
-        
-        # Move towards player if in aggro range
-        if closest_distance <= self.aggro_range:
-            dx = closest_player.x - self.x
-            dy = closest_player.y - self.y
-            distance = math.hypot(dx, dy)
-            
-            if distance > 0:
-                dx = (dx / distance) * self.speed
-                dy = (dy / distance) * self.speed
-                
-                self.x += dx
-                self.y += dy
-                self.rect.x = self.x
-                self.rect.y = self.y
-    
-    def draw(self, screen, camera_x, camera_y, game_x, game_y):
-        if self.hp <= 0:
-            return
-        
+        if self.hp <= 0: return
+
+        if self.is_slowed:
+            if pygame.time.get_ticks() - self.slow_timer > self.slow_duration:
+                self.is_slowed = False
+                self.speed = self.original_speed
+
+        living_players = [p for p in players if not p.dead]
+        if self.movement_profile: self.movement_profile.move(self, living_players)
+        if self.attack_profile: self.attack_profile.execute(self, living_players)
+        self.rect.topleft = (self.x, self.y)
+
+    def draw(self, surface, camera_x, camera_y, game_x, game_y):
+        if self.hp <= 0: return
         draw_rect = self.rect.move(-camera_x + game_x, -camera_y + game_y)
-        pygame.draw.rect(screen, (139, 69, 19), draw_rect)  # Brown color
+        color = self.slow_color if self.is_slowed else (139, 69, 19)
+        pygame.draw.rect(surface, color, draw_rect)
 
 class ThornyVenomThistle:
     def __init__(self, x, y, size):
+        self.id = next(creature_id_counter)
         self.x = x
         self.y = y
         self.width = size
@@ -125,7 +113,12 @@ class ThornyVenomThistle:
         self.last_attack_time = 0
         self.attack_cooldown = 1500  # 1.5 seconds
         self.attack_range = 40  # Slightly larger attack range since it's stationary
-    
+        self.is_slowed = False
+
+    def apply_slow(self, duration, factor):
+        """A dummy method to allow for consistent API calls."""
+        self.is_slowed = True # You could add a visual effect here if desired
+
     def update(self, players):
         if self.hp <= 0:
             return

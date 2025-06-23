@@ -70,6 +70,9 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM:
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
             bullets.append(bullet)
+        elif weapon.common.fire_mode == FireMode.BEAM:
+            # Handle beam weapons (lightning-fast piercing beam)
+            bullets.append(create_beam(player.rect.centerx, player.rect.centery, math.atan2(player.aim_direction[1], player.aim_direction[0]), weapon))
         else:
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
             bullets.append(bullet)
@@ -183,7 +186,8 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         
         # Apply accuracy as a random offset from the cursor
         offset_angle = random.uniform(0, 2 * math.pi)
-        offset_radius = weapon.common.accuracy * (random.random() * 3) # Randomize radius for less of a donut effect
+        # Use a more reasonable accuracy radius (tile_size * accuracy * 10 for better scaling)
+        offset_radius = tile_size * weapon.common.accuracy * 10 * random.random()
         target_x += math.cos(offset_angle) * offset_radius
         target_y += math.sin(offset_angle) * offset_radius
 
@@ -260,6 +264,24 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
     
     return bullet
 
+def create_beam(x, y, angle, weapon):
+    """Create a lightning-fast beam projectile"""
+    return {
+        'x': x,
+        'y': y,
+        'angle': angle,
+        'speed': 200,  # Much faster speed for lightning effect
+        'damage': weapon.common.damage,
+        'size': weapon.common.bullet_size,
+        'color': weapon.common.bullet_color,
+        'range': 200,  # Shorter range for lightning effect
+        'piercing': weapon.uncommon.piercing or 0,
+        'damage_type': weapon.common.damage_type,
+        'hits': set(),  # Track creatures hit to prevent multiple hits
+        'trail_points': [(x, y)],  # Store trail points for visual effect
+        'type': 'beam'
+    }
+
 def reset_warm_up(players):
     """
     Reset warm-up state for all weapons of all players.
@@ -273,49 +295,80 @@ def reset_warm_up(players):
                 weapon.is_warming_up = False
                 weapon.warm_up_start = None
 
-def update_bullets(bullets, visible_walls, creatures, splash_effects, players, tile_size=32, camera_x=0, camera_y=0):
-    """
-    Update bullet positions and handle collisions.
-    
-    Args:
-        bullets: List of active bullets
-        visible_walls: List of wall rectangles
-        creatures: List of creature objects
-        splash_effects: List of splash effects
-        players: List of Player objects
-        tile_size: Size of tiles in pixels
-        camera_x: X coordinate of the camera
-        camera_y: Y coordinate of the camera
-    
-    Returns:
-        Tuple of (updated_bullets, updated_splash_effects)
-    """
+def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
     bullets_to_remove = []
+    splash_effects = []  # Initialize splash_effects list
+    
     for bullet in bullets[:]:
-        if bullet.get('is_orbital'):
-            # Regular orbital missile logic
+        if bullet.get('type') == 'beam':
+            # Handle beam projectiles
+            dx = math.cos(bullet['angle']) * bullet['speed']
+            dy = math.sin(bullet['angle']) * bullet['speed']
+            
+            bullet['x'] += dx
+            bullet['y'] += dy
+            
+            # Add current position to trail
+            bullet['trail_points'].append((bullet['x'], bullet['y']))
+            
+            # Limit trail length to prevent memory issues
+            if len(bullet['trail_points']) > 20:
+                bullet['trail_points'].pop(0)
+            
+            # Check for wall collisions
+            bullet_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], 
+                                    bullet['size'] * 2, bullet['size'] * 2)
+            
+            wall_collision = False
+            for wall in walls:
+                if bullet_rect.colliderect(wall):
+                    wall_collision = True
+                    break
+            
+            if wall_collision:
+                bullets_to_remove.append(bullet)
+                continue
+            
+            # Check for creature collisions
+            for creature in creatures:
+                if creature.id not in bullet['hits'] and bullet_rect.colliderect(creature.rect):
+                    bullet['hits'].add(creature.id)
+                    creature.hp -= bullet['damage']
+                    
+                    if bullet['damage_type'] == DamageType.ICE:
+                        creature.apply_slow(duration=3000, factor=0.5)
+                    
+                    # Beams don't get destroyed by creature hits due to high pierce
+                    if len(bullet['hits']) >= bullet['piercing']:
+                        bullets_to_remove.append(bullet)
+                        break
+            
+            # Check if beam has traveled its maximum range
+            start_x, start_y = bullet['trail_points'][0]
+            distance_traveled = math.sqrt((bullet['x'] - start_x)**2 + (bullet['y'] - start_y)**2)
+            if distance_traveled > bullet['range']:
+                bullets_to_remove.append(bullet)
+                
+        elif bullet.get('is_orbital'):
+            # Handle orbital missiles
             bullet['z'] -= bullet['fall_speed']
             if bullet['z'] <= 0:
                 # Landed, now explode
                 if bullet.get('splash'):
-                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
                 bullets_to_remove.append(bullet)
                 continue
             # Skip all other physics for orbital projectiles
             continue
+            
         elif bullet.get('is_orbital_beam'):
             # Handle solar death beam mechanics
             current_time = pygame.time.get_ticks()
             warm_up_elapsed = (current_time - bullet['warm_up_start']) / 1000.0
             warm_up_time = bullet.get('warm_up_time', 2.0)
             
-            # Debug: Print warm-up status
-            if not bullet.get('beam_active', False):
-                print(f"Solar beam warm-up: {warm_up_elapsed:.1f}s / {warm_up_time}s")
-            
             if not bullet.get('beam_active', False) and warm_up_elapsed >= warm_up_time:
                 # Warm-up complete, activate beam
-                print("Solar beam ACTIVATED!")
                 bullet['beam_active'] = True
                 bullet['beam_start_time'] = current_time
                 bullet['last_damage_time'] = current_time  # Start dealing damage immediately
@@ -330,7 +383,6 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 beam_elapsed = (current_time - bullet['beam_start_time']) / 1000.0
                 if beam_elapsed >= bullet['beam_duration']:
                     # Beam expired, remove it
-                    print("Solar beam EXPIRED!")
                     bullets_to_remove.append(bullet)
                     continue
                 
@@ -338,7 +390,7 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
                 damage_elapsed = (current_time - bullet['last_damage_time']) / 1000.0
                 if damage_elapsed >= bullet['beam_damage_tick']:
                     # Deal damage to creatures in beam area
-                    beam_radius = bullet.get('splash', 2.0) * tile_size
+                    beam_radius = bullet.get('splash', 2.0) * 32
                     for creature in creatures:
                         distance = math.sqrt((creature.rect.centerx - bullet['x'])**2 + 
                                            (creature.rect.centery - bullet['y'])**2)
@@ -348,152 +400,65 @@ def update_bullets(bullets, visible_walls, creatures, splash_effects, players, t
             
             # Don't remove the beam - let it continue until duration expires
             continue
-        elif bullet.get('is_grenade'):
-            now = pygame.time.get_ticks()
-            if now - bullet['creation_time'] >= bullet['detonation_time'] * 1000:
-                if bullet.get('splash'):
-                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
-                bullets_to_remove.append(bullet)
-                continue
             
-            if bullet['phase'] == 'flying':
-                # Move toward landing point
-                bullet['x'] += bullet['velocity_x']
-                bullet['y'] += bullet['velocity_y']
-                bullet['distance_traveled'] += math.hypot(bullet['velocity_x'], bullet['velocity_y'])
-                # Use dot product to check if passed landing point
-                start_x, start_y = bullet['start_x'], bullet['start_y']
-                landing_x, landing_y = bullet['landing_x'], bullet['landing_y']
-                dir_x, dir_y = bullet['direction_vec']
-                to_current = ((bullet['x'] - start_x), (bullet['y'] - start_y))
-                to_landing = ((landing_x - start_x), (landing_y - start_y))
-                dot = to_current[0]*to_landing[0] + to_current[1]*to_landing[1]
-                if dot >= 0 and bullet['distance_traveled'] >= bullet['travel_distance']:
-                    bullet['phase'] = 'rolling'
-                    bullet['velocity_x'] = bullet['roll_dx'] * 2
-                    bullet['velocity_y'] = bullet['roll_dy'] * 2
-            elif bullet['phase'] == 'rolling':
-                bullet['x'] += bullet['velocity_x']
-                bullet['y'] += bullet['velocity_y']
-                bullet['roll_left'] -= math.hypot(bullet['velocity_x'], bullet['velocity_y'])
-                bullet['velocity_x'] *= 0.92
-                bullet['velocity_y'] *= 0.92
-                if bullet['roll_left'] <= 0 or (abs(bullet['velocity_x']) < 0.2 and abs(bullet['velocity_y']) < 0.2):
-                    bullet['velocity_x'] = 0
-                    bullet['velocity_y'] = 0
-                    bullet['phase'] = 'stopped'
         else:
+            # Handle regular bullets (existing logic)
             bullet['x'] += bullet['dx'] * bullet['speed']
             bullet['y'] += bullet['dy'] * bullet['speed']
             bullet['distance'] += bullet['speed']
             
-            # Add organic movement for flame bullets
-            if bullet.get('is_flame'):
-                # Add slight drift to flame movement
-                drift_time = pygame.time.get_ticks() * 0.01 + bullet.get('flame_variation', 0)
-                drift_x = math.sin(drift_time * 0.5) * 0.3
-                drift_y = math.cos(drift_time * 0.7) * 0.3
-                bullet['x'] += drift_x
-                bullet['y'] += drift_y
-                
-                # Gradually slow down flames (they lose energy)
-                bullet['speed'] *= 0.995
-            
+            # Check if bullet has exceeded its range
             if bullet['distance'] > bullet['range']:
                 bullets_to_remove.append(bullet)
                 continue
-        
-        bullet_rect = pygame.Rect(
-            bullet['x'] - bullet['size'],
-            bullet['y'] - bullet['size'],
-            bullet['size'] * 2,
-            bullet['size'] * 2
-        )
-        
-        contact_effect = bullet.get('contact_effect')
-
-        # --- Wall Collision ---
-        hit_wall = False
-        for wall in visible_walls:
-            if bullet_rect.colliderect(wall):
-                hit_wall = True
-                can_bounce = contact_effect in (ContactEffect.DAMAGE_BOUNCE, ContactEffect.NO_DAMAGE_BOUNCE) and bullet.get('bounce_limit') is not None and bullet.get('bounces', 0) < bullet.get('bounce_limit')
-                
-                if can_bounce:
-                    bullet['bounces'] += 1
-                    # --- Perform bounce physics ---
-                    # Calculate overlap to determine collision side
-                    dx_overlap = min(bullet_rect.right - wall.left, wall.right - bullet_rect.left)
-                    dy_overlap = min(bullet_rect.bottom - wall.top, wall.bottom - bullet_rect.top)
-
-                    if dx_overlap < dy_overlap:
-                        # Horizontal collision
-                        if bullet.get('is_grenade'): bullet['velocity_x'] *= -1
-                        else: bullet['dx'] *= -1
-                    else:
-                        # Vertical collision
-                        if bullet.get('is_grenade'): bullet['velocity_y'] *= -1
-                        else: bullet['dy'] *= -1
-                else:
-                    # --- Cannot bounce, handle other effects or remove ---
-                    if contact_effect == ContactEffect.EXPLODE:
-                        if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
+            
+            # Create bullet rectangle for collision detection
+            bullet_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], 
+                                    bullet['size'] * 2, bullet['size'] * 2)
+            
+            # --- Wall Collision ---
+            hit_wall = False
+            for wall in walls:
+                if bullet_rect.colliderect(wall):
+                    hit_wall = True
+                    break
+            
+            if hit_wall:
+                if bullet['contact_effect'] == ContactEffect.EXPLODE:
+                    # Handle explosive bullets
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
+                bullets_to_remove.append(bullet)
+                continue
+            
+            # --- Creature Collision ---
+            contact_effect = bullet['contact_effect']
+            collided_creature = None
+            
+            for creature in creatures:
+                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
+                    collided_creature = creature
+                    break
+            
+            if collided_creature:
+                if contact_effect == ContactEffect.EXPLODE:
+                    # Handle explosive bullets
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
                     bullets_to_remove.append(bullet)
-                break 
-        if hit_wall: continue
-
-        # --- Creature Collision ---
-        collided_creature = None
-        for creature in creatures:
-            if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
-                collided_creature = creature
-                break
-
-        if collided_creature:
-            can_bounce = contact_effect in (ContactEffect.DAMAGE_BOUNCE, ContactEffect.NO_DAMAGE_BOUNCE) and bullet.get('bounce_limit') is not None and bullet.get('bounces', 0) < bullet.get('bounce_limit')
-
-            if can_bounce:
-                # Deal damage only if it's a damage-dealing bounce
-                if contact_effect == ContactEffect.DAMAGE_BOUNCE:
+                elif contact_effect == ContactEffect.PIERCE:
+                    # Handle piercing logic
                     if 'hit_creatures' not in bullet:
                         bullet['hit_creatures'] = set()
-                    
                     if id(collided_creature) not in bullet['hit_creatures']:
                         collided_creature.hp -= bullet['damage']
+                        if bullet['damage_type'] == DamageType.ICE:
+                            collided_creature.apply_slow(duration=3000, factor=0.5)
                         bullet['hit_creatures'].add(id(collided_creature))
-
-                bullet['bounces'] += 1
-                
-                # --- Perform bounce physics ---
-                creature_rect = collided_creature.rect
-                # Calculate overlap to determine collision side
-                dx_overlap = min(bullet_rect.right - creature_rect.left, creature_rect.right - bullet_rect.left)
-                dy_overlap = min(bullet_rect.bottom - creature_rect.top, creature_rect.bottom - bullet_rect.top)
-
-                if dx_overlap < dy_overlap:
-                    # Horizontal collision
-                    if bullet.get('is_grenade'): bullet['velocity_x'] *= -1
-                    else: bullet['dx'] *= -1
-                else:
-                    # Vertical collision
-                    if bullet.get('is_grenade'): bullet['velocity_y'] *= -1
-                    else: bullet['dy'] *= -1
-            elif contact_effect == ContactEffect.EXPLODE:
-                if bullet.get('splash'): splash_effects = handle_splash_damage(bullet, creatures, splash_effects, tile_size)
-                bullets_to_remove.append(bullet)
-            elif contact_effect == ContactEffect.PIERCE:
-                # Handle piercing logic
-                if 'hit_creatures' not in bullet:
-                    bullet['hit_creatures'] = set()
-                if id(collided_creature) not in bullet['hit_creatures']:
-                    collided_creature.hp -= bullet['damage']
-                    bullet['hit_creatures'].add(id(collided_creature))
-                    bullet['pierces_left'] -= 1
-                if bullet['pierces_left'] < 0:
+                        bullet['pierces_left'] -= 1
+                    if bullet['pierces_left'] < 0:
+                        bullets_to_remove.append(bullet)
+                else: # Bouncing bullet that has run out of bounces
                     bullets_to_remove.append(bullet)
-            else: # Bouncing bullet that has run out of bounces
-                bullets_to_remove.append(bullet)
-            continue
+                continue
 
     # Remove bullets marked for removal
     for bullet in bullets_to_remove:
