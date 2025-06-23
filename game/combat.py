@@ -477,54 +477,30 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                     break
             
             if collided_creature:
-                # --- Handle different contact effects ---
+                # Apply all creature effects modularly
+                apply_creature_effects(bullet, collided_creature)
+                # --- Handle bullet effects ---
                 if bullet['contact_effect'] in [ContactEffect.DAMAGE_BOUNCE, ContactEffect.NO_DAMAGE_BOUNCE]:
-                    # Deal direct damage to the creature
-                    collided_creature.hp -= bullet['damage']
-                    
                     if bullet.get('bounce_limit', 0) > 0:
                         bullet['bounce_limit'] -= 1
-                        
-                        # Apply damage increase on bounce if applicable
                         if bullet['contact_effect'] == ContactEffect.DAMAGE_BOUNCE:
                             bullet['damage'] *= 1.1
-
-                        # Simple bounce: reverse direction
                         bullet['dx'] *= -1
                         bullet['dy'] *= -1
                     else:
-                        # No bounces left, remove the bullet
                         bullets_to_remove.append(bullet)
-                        
                 elif bullet['contact_effect'] == ContactEffect.PIERCE:
-                    # Handle piercing logic
                     if 'hit_creatures' not in bullet:
                         bullet['hit_creatures'] = set()
-                    if id(collided_creature) not in bullet['hit_creatures']:
-                        if bullet['damage_type'] == DamageType.POISON:
-                            apply_poison(collided_creature, bullet['damage'])
-                            collided_creature.hp -= 1  # Minimal impact damage
-                        else:
-                            collided_creature.hp -= bullet['damage']
-                        
-                        if bullet['damage_type'] == DamageType.ICE:
-                            collided_creature.apply_slow(duration=3000, factor=0.5)
-                        
-                        bullet['hit_creatures'].add(id(collided_creature))
-                        bullet['pierces_left'] -= 1
-
+                    bullet['hit_creatures'].add(id(collided_creature))
+                    bullet['pierces_left'] -= 1
                     if bullet['pierces_left'] < 0:
                         bullets_to_remove.append(bullet)
-                
                 elif bullet['contact_effect'] == ContactEffect.EXPLODE:
-                    # Handle explosive bullets
                     splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
                     bullets_to_remove.append(bullet)
-                
-                else: # Standard bullet behavior
-                    collided_creature.hp -= bullet['damage']
+                else:
                     bullets_to_remove.append(bullet)
-                
                 continue
 
     # Remove bullets marked for removal
@@ -770,4 +746,29 @@ def update_poison_effects(creatures):
             
             # Remove expired effects by index, in reverse order to not mess up indices
             for i in sorted(effects_to_remove, reverse=True):
-                del creature.poison_effects[i] 
+                del creature.poison_effects[i]
+
+def apply_creature_effects(bullet, creature):
+    # Always apply direct damage (unless poison, which is handled below)
+    if bullet['damage_type'] == DamageType.POISON:
+        apply_poison(creature, bullet['damage'])
+        creature.hp -= 1  # Minimal impact damage
+    else:
+        creature.hp -= bullet['damage']
+    
+    # Fire effect
+    if bullet['damage_type'] == DamageType.FIRE:
+        if hasattr(creature, 'burning_effects'):
+            # Only apply if not already burning
+            if id(creature) not in creature.burning_effects:
+                creature.burning_effects[id(creature)] = {
+                    'damage': bullet.get('burn_damage', bullet['damage']),
+                    'duration': 3.0,
+                    'tick_rate': 0.5,
+                    'start_time': pygame.time.get_ticks(),
+                    'last_tick': pygame.time.get_ticks()
+                }
+    # Freeze effect
+    if bullet['damage_type'] == DamageType.ICE:
+        if hasattr(creature, 'apply_slow'):
+            creature.apply_slow(duration=3000, factor=0.5) 
