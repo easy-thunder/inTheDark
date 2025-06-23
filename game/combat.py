@@ -270,7 +270,7 @@ def create_beam(x, y, angle, weapon):
         'x': x,
         'y': y,
         'angle': angle,
-        'speed': 200,  # Much faster speed for lightning effect
+        'speed': weapon.common.bullet_speed,
         'damage': weapon.common.damage,
         'size': weapon.common.bullet_size,
         'color': weapon.common.bullet_color,
@@ -301,6 +301,9 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
     
     for bullet in bullets[:]:
         if bullet.get('type') == 'beam':
+            # Store previous position for robust collision detection
+            prev_x, prev_y = bullet['x'], bullet['y']
+
             # Handle beam projectiles
             dx = math.cos(bullet['angle']) * bullet['speed']
             dy = math.sin(bullet['angle']) * bullet['speed']
@@ -329,9 +332,9 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                 bullets_to_remove.append(bullet)
                 continue
             
-            # Check for creature collisions
+            # Check for creature collisions using clipline to prevent tunneling
             for creature in creatures:
-                if creature.id not in bullet['hits'] and bullet_rect.colliderect(creature.rect):
+                if creature.id not in bullet['hits'] and creature.rect.clipline((prev_x, prev_y), (bullet['x'], bullet['y'])):
                     bullet['hits'].add(creature.id)
                     creature.hp -= bullet['damage']
                     

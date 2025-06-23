@@ -341,7 +341,7 @@ def create_laser_beam():
         reload_speed=3.0,
         bullet_size=0.2, # Represents beam thickness
         bullet_color=(255, 0, 0), # Red
-        bullet_speed=0, # Not applicable for a beam
+        bullet_speed=80, # Speed of the beam
         ammo=100,
         specialization_type=None,
         specialization_level=1,
