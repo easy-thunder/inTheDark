@@ -497,9 +497,18 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                             new_angle = current_angle + max_turn * (1 if diff > 0 else -1)
                         bullet['dx'] = math.cos(new_angle)
                         bullet['dy'] = math.sin(new_angle)
+            
+            # Store previous position for distance calculation
+            old_x = bullet['x']
+            old_y = bullet['y']
+            
+            # Update position
             bullet['x'] += bullet['dx'] * bullet['speed']
             bullet['y'] += bullet['dy'] * bullet['speed']
-            bullet['distance'] += bullet['speed']
+            
+            # Calculate actual distance moved this frame
+            actual_distance = math.hypot(bullet['x'] - old_x, bullet['y'] - old_y)
+            bullet['distance'] += actual_distance
             
             # Check if bullet has exceeded its range
             if bullet['distance'] > bullet['range']:
@@ -847,16 +856,17 @@ def apply_creature_effects(bullet, creature):
     
     # Fire effect
     if bullet['damage_type'] == DamageType.FIRE:
-        if hasattr(creature, 'burning_effects'):
-            # Only apply if not already burning
-            if id(creature) not in creature.burning_effects:
-                creature.burning_effects[id(creature)] = {
-                    'damage': bullet.get('burn_damage', bullet['damage']),
-                    'duration': 3.0,
-                    'tick_rate': 0.5,
-                    'start_time': pygame.time.get_ticks(),
-                    'last_tick': pygame.time.get_ticks()
-                }
+        # Always initialize burning_effects as a dict
+        if not hasattr(creature, 'burning_effects') or creature.burning_effects is None:
+            creature.burning_effects = {}
+        # Always refresh or add burning effect for this creature
+        creature.burning_effects[id(creature)] = {
+            'damage': bullet.get('burn_damage', bullet['damage']),
+            'duration': 3.0,
+            'tick_rate': 0.5,
+            'start_time': pygame.time.get_ticks(),
+            'last_tick': pygame.time.get_ticks()
+        }
     # Freeze effect
     if bullet['damage_type'] == DamageType.ICE:
         if hasattr(creature, 'apply_slow'):

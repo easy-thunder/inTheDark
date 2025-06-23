@@ -77,11 +77,7 @@ TESTY = Character(
 
         # --- New Batch: Toggle below ---
 
-        create_cryo_assault_rifle(),
-        create_incendiary_assault_rifle(),
-        create_ricochet_minigun(),
-        create_piercing_laser_smg(),
-        create_poison_spray_blaster(),
+        create_piercing_laser_smg()
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
