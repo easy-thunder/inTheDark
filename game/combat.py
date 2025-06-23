@@ -282,7 +282,7 @@ def create_beam(x, y, angle, weapon):
         'damage': weapon.common.damage,
         'size': weapon.common.bullet_size,
         'color': weapon.common.bullet_color,
-        'range': 200,  # Shorter range for lightning effect
+        'range': weapon.common.range * 32,  # Use weapon's actual range
         'piercing': weapon.uncommon.piercing or 0,
         'damage_type': weapon.common.damage_type,
         'hits': set(),  # Track creatures hit to prevent multiple hits
@@ -519,10 +519,11 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
             bullet_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], 
                                     bullet['size'] * 2, bullet['size'] * 2)
             
-            # --- Wall Collision ---
+            # --- Wall Collision with continuous detection ---
             hit_wall = False
             for wall in walls:
-                if bullet_rect.colliderect(wall):
+                # Check both current position and the path to it
+                if bullet_rect.colliderect(wall) or wall.clipline((old_x, old_y), (bullet['x'], bullet['y'])):
                     hit_wall = True
                     break
             
@@ -535,19 +536,20 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                     # Handle bouncing bullets
                     bullet['bounce_limit'] -= 1
                     
+                    # Move bullet back to previous position before bounce
+                    bullet['x'] = old_x
+                    bullet['y'] = old_y
+                    
                     # --- Determine bounce direction ---
-                    # Find which edge of the wall was hit
-                    # This is a simplified approach; for perfect reflections, a more complex method is needed
                     bullet_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], bullet['size']*2, bullet['size']*2)
                     hit_wall_rect = None
                     for w in walls:
-                        if bullet_rect.colliderect(w):
+                        if bullet_rect.colliderect(w) or w.clipline((old_x, old_y), (bullet['x'], bullet['y'])):
                             hit_wall_rect = w
                             break
                     
                     if hit_wall_rect:
                         # Check for horizontal vs. vertical collision
-                        # A simple way is to move the bullet back and see which axis resolves the collision
                         bullet_rect.x -= bullet['dx'] * bullet['speed']
                         if bullet_rect.colliderect(hit_wall_rect):
                             bullet['dy'] *= -1 # Vertical bounce
@@ -565,12 +567,13 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                     bullets_to_remove.append(bullet)
                 continue
             
-            # --- Creature Collision ---
+            # --- Creature Collision with continuous detection ---
             contact_effect = bullet['contact_effect']
             collided_creature = None
             
             for creature in creatures:
-                if creature.hp > 0 and bullet_rect.colliderect(creature.rect):
+                if creature.hp > 0 and (bullet_rect.colliderect(creature.rect) or 
+                                      creature.rect.clipline((old_x, old_y), (bullet['x'], bullet['y']))):
                     collided_creature = creature
                     break
             

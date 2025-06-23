@@ -76,8 +76,11 @@ TESTY = Character(
         # --- Standard Weapons ---
 
         # --- New Batch: Toggle below ---
-
-        create_piercing_laser_smg()
+        create_grenade(),
+        create_piercing_laser_smg(),
+        create_comets_fury(),
+        create_gatling_freezer(),
+        create_glacial_torrent(),
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
