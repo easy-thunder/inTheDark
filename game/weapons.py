@@ -385,9 +385,8 @@ def create_apocalypse_engine():
         bullet_speed=10, ammo=20, specialization_type=WeaponSpecialization.EXPLOSIVES,
         specialization_level=10, contact_effect=ContactEffect.EXPLODE, damage_type=DamageType.POISON
     )
-    uncommon = UncommonStats(splash=4.0)
-    unique = UniqueStats(drop_height=1200)
-    return Weapon(common, uncommon, unique)
+    uncommon = UncommonStats(splash=4.0, drop_height=1200)
+    return Weapon(common, uncommon)
 
 def create_glacial_torrent():
     """Fires a wide cone of piercing ice shards."""

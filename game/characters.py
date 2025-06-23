@@ -63,11 +63,18 @@ TESTY = Character(
     revival_time=5,
     weapons=[
         # --- Standard Weapons ---
-        create_ricochet_pistol(),        # --- Ridiculous Weapons ---
+        create_missile_striker(),   
+        # create_flamethrower(),
+        create_mini_gun(),
+        create_inferno_shotgun(),
+        create_ice_sprayer(),
+        # create_the_kraken(),
+        create_serpents_breath()
+   
+        
+        # --- Ridiculous Weapons ---
         # create_apocalypse_engine(),
-        create_ricocheting_venom(),
-        create_poison_dart_gun(),
-        create_solar_death_beam(),
+        # create_missile_striker(),
         # create_the_kraken(),
         # create_comets_fury(),
 
