@@ -60,9 +60,9 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
                 bullet['dx'] = dx
                 bullet['dy'] = dy
                 bullet['speed'] = weapon.common.bullet_speed * speed_variation
-                bullet['flame_variation'] = random.uniform(0, 2 * math.pi)
-                bullet['flame_size_variation'] = random.uniform(0.7, 1.3)
-                bullet['flame_intensity'] = random.uniform(0.8, 1.2)
+                bullet['particle_variation'] = random.uniform(0, 2 * math.pi)
+                bullet['particle_size_variation'] = random.uniform(0.7, 1.3)
+                bullet['particle_intensity'] = random.uniform(0.8, 1.2)
                 bullets.append(bullet)
         elif weapon.common.fire_mode == FireMode.ORBITAL:
             bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
@@ -167,12 +167,14 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
     
     # Add flame-specific properties for fire damage
     if weapon.common.damage_type == DamageType.FIRE:
-        bullet['is_flame'] = True
         bullet['burn_duration'] = 3.0  # 3 seconds of burn damage
         bullet['burn_damage'] = weapon.common.damage
         bullet['burn_tick_rate'] = 0.5  # Damage every 0.5 seconds
         bullet['burned_creatures'] = set()  # Track which creatures are burning
     
+    if weapon.common.fire_mode == FireMode.SPRAY:
+        bullet['is_spray_particle'] = True
+
     if weapon.common.fire_mode == FireMode.ORBITAL:
         bullet['is_orbital'] = True
         bullet['z'] = weapon.uncommon.drop_height
@@ -430,7 +432,39 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                 if bullet['contact_effect'] == ContactEffect.EXPLODE:
                     # Handle explosive bullets
                     splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
-                bullets_to_remove.append(bullet)
+                    bullets_to_remove.append(bullet)
+                elif bullet.get('bounce_limit', 0) > 0:
+                    # Handle bouncing bullets
+                    bullet['bounce_limit'] -= 1
+                    
+                    # --- Determine bounce direction ---
+                    # Find which edge of the wall was hit
+                    # This is a simplified approach; for perfect reflections, a more complex method is needed
+                    bullet_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], bullet['size']*2, bullet['size']*2)
+                    hit_wall_rect = None
+                    for w in walls:
+                        if bullet_rect.colliderect(w):
+                            hit_wall_rect = w
+                            break
+                    
+                    if hit_wall_rect:
+                        # Check for horizontal vs. vertical collision
+                        # A simple way is to move the bullet back and see which axis resolves the collision
+                        bullet_rect.x -= bullet['dx'] * bullet['speed']
+                        if bullet_rect.colliderect(hit_wall_rect):
+                            bullet['dy'] *= -1 # Vertical bounce
+                        else:
+                            bullet['dx'] *= -1 # Horizontal bounce
+                        
+                        # Apply damage on bounce if applicable
+                        if bullet['contact_effect'] == ContactEffect.DAMAGE_BOUNCE:
+                            bullet['damage'] = bullet['damage'] * 1.1 # Increase damage by 10% on bounce
+                    else:
+                        # Default bounce if wall rect not found (should not happen)
+                        bullet['dx'] *= -1
+                        bullet['dy'] *= -1
+                else:
+                    bullets_to_remove.append(bullet)
                 continue
             
             # --- Creature Collision ---
@@ -443,24 +477,54 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                     break
             
             if collided_creature:
-                if contact_effect == ContactEffect.EXPLODE:
-                    # Handle explosive bullets
-                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
-                    bullets_to_remove.append(bullet)
-                elif contact_effect == ContactEffect.PIERCE:
+                # --- Handle different contact effects ---
+                if bullet['contact_effect'] in [ContactEffect.DAMAGE_BOUNCE, ContactEffect.NO_DAMAGE_BOUNCE]:
+                    # Deal direct damage to the creature
+                    collided_creature.hp -= bullet['damage']
+                    
+                    if bullet.get('bounce_limit', 0) > 0:
+                        bullet['bounce_limit'] -= 1
+                        
+                        # Apply damage increase on bounce if applicable
+                        if bullet['contact_effect'] == ContactEffect.DAMAGE_BOUNCE:
+                            bullet['damage'] *= 1.1
+
+                        # Simple bounce: reverse direction
+                        bullet['dx'] *= -1
+                        bullet['dy'] *= -1
+                    else:
+                        # No bounces left, remove the bullet
+                        bullets_to_remove.append(bullet)
+                        
+                elif bullet['contact_effect'] == ContactEffect.PIERCE:
                     # Handle piercing logic
                     if 'hit_creatures' not in bullet:
                         bullet['hit_creatures'] = set()
                     if id(collided_creature) not in bullet['hit_creatures']:
-                        collided_creature.hp -= bullet['damage']
+                        if bullet['damage_type'] == DamageType.POISON:
+                            apply_poison(collided_creature, bullet['damage'])
+                            collided_creature.hp -= 1  # Minimal impact damage
+                        else:
+                            collided_creature.hp -= bullet['damage']
+                        
                         if bullet['damage_type'] == DamageType.ICE:
                             collided_creature.apply_slow(duration=3000, factor=0.5)
+                        
                         bullet['hit_creatures'].add(id(collided_creature))
                         bullet['pierces_left'] -= 1
+
                     if bullet['pierces_left'] < 0:
                         bullets_to_remove.append(bullet)
-                else: # Bouncing bullet that has run out of bounces
+                
+                elif bullet['contact_effect'] == ContactEffect.EXPLODE:
+                    # Handle explosive bullets
+                    splash_effects = handle_splash_damage(bullet, creatures, splash_effects, 32)
                     bullets_to_remove.append(bullet)
+                
+                else: # Standard bullet behavior
+                    collided_creature.hp -= bullet['damage']
+                    bullets_to_remove.append(bullet)
+                
                 continue
 
     # Remove bullets marked for removal
@@ -651,4 +715,59 @@ def update_burning_creatures(creatures):
             
             # Remove expired effects
             for effect_id in effects_to_remove:
-                del creature.burning_effects[effect_id] 
+                del creature.burning_effects[effect_id]
+
+def apply_poison(creature, base_damage):
+    if not hasattr(creature, 'poison_effects'):
+        creature.poison_effects = []
+
+    # Limit stacks to 4
+    if len(creature.poison_effects) >= 4:
+        # Refresh duration of existing stacks instead of adding a new one
+        for effect in creature.poison_effects:
+            effect['start_time'] = pygame.time.get_ticks()
+        return
+
+    # Calculate damage for the new stack with diminishing returns
+    if not creature.poison_effects:
+        new_damage = base_damage  # First stack does full damage
+    else:
+        last_damage = creature.poison_effects[-1]['damage_per_tick']
+        new_damage = last_damage * 0.7  # Subsequent stacks do 70% of the previous
+
+    new_effect = {
+        'damage_per_tick': new_damage,
+        'duration': 20000,  # 20 seconds
+        'tick_rate': 1000,   # 1 second
+        'start_time': pygame.time.get_ticks(),
+        'last_tick': pygame.time.get_ticks()
+    }
+    creature.poison_effects.append(new_effect)
+
+def update_poison_effects(creatures):
+    """
+    Update all poisoned creatures and apply damage over time.
+    """
+    current_time = pygame.time.get_ticks()
+
+    for creature in creatures:
+        if hasattr(creature, 'poison_effects') and creature.poison_effects:
+            effects_to_remove = []
+            
+            for i, effect in enumerate(creature.poison_effects):
+                elapsed_time = (current_time - effect['start_time'])
+                
+                # Check if poison duration has expired
+                if elapsed_time >= effect['duration']:
+                    effects_to_remove.append(i)
+                    continue
+                
+                # Apply damage at tick rate intervals
+                time_since_last_tick = (current_time - effect['last_tick'])
+                if time_since_last_tick >= effect['tick_rate']:
+                    creature.hp -= effect['damage_per_tick']
+                    effect['last_tick'] = current_time
+            
+            # Remove expired effects by index, in reverse order to not mess up indices
+            for i in sorted(effects_to_remove, reverse=True):
+                del creature.poison_effects[i] 

@@ -5,8 +5,8 @@ import random
 from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
-from game.creatures import create_zombie_cat
-from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures
+from game.creatures import create_zombie_cat, create_tough_zombie_cat
+from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures, update_poison_effects
 from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
 from game.input_handler import handle_events, get_player_movement, is_fire_pressed
@@ -66,12 +66,19 @@ def main():
 
     # --- Creature Management ---
     creatures = []
-    for _ in range(5):
+    # Spawn 2 regular cats
+    for _ in range(2):
         creatures.append(create_zombie_cat(
             x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
             y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
             size=PLAYER_SIZE
         ))
+    # Spawn 1 tough cat for testing
+    creatures.append(create_tough_zombie_cat(
+        x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
+        y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
+        size=PLAYER_SIZE
+    ))
     
     current_max_distance = 0
     start_ticks = pygame.time.get_ticks()
@@ -124,8 +131,9 @@ def main():
         # --- Update Bullets and Handle Collisions ---
         bullets, splash_effects = update_bullets(bullets, creatures, visible_walls, 1/60, camera_x, camera_y)
         
-        # --- Update Burning Effects ---
+        # --- Update Status Effects ---
         update_burning_creatures(creatures)
+        update_poison_effects(creatures)
 
         # --- Draw Effects ---
         draw_splash_effects(screen, splash_effects, camera_x, camera_y, GAME_X, GAME_Y)

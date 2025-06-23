@@ -243,99 +243,54 @@ def draw_bullets(screen, bullets, camera_x, camera_y, game_x, game_y):
                     screen.blit(time_text, (gx - time_text.get_width() // 2, gy + beam_radius + 5))
                 
                 continue
-        elif bullet.get('is_flame'):
+        elif bullet.get('is_spray_particle'):
             bx = int(bullet['x'] - camera_x + game_x)
             by = int(bullet['y'] - camera_y + game_y)
             
-            # Get flame properties
-            flame_variation = bullet.get('flame_variation', 0)
-            size_variation = bullet.get('flame_size_variation', 1.0)
-            intensity = bullet.get('flame_intensity', 1.0)
-            # Ensure intensity is a valid number
-            if intensity is None or not isinstance(intensity, (int, float)):
-                intensity = 1.0
+            # Get particle properties
+            particle_variation = bullet.get('particle_variation', 0)
+            size_variation = bullet.get('particle_size_variation', 1.0)
+            intensity = bullet.get('particle_intensity', 1.0)
+            base_color = bullet.get('color', (255, 255, 255))
             current_time = pygame.time.get_ticks()
+
+            # --- Generate Color Variants ---
+            r, g, b = base_color
+            bright_color = (min(255, r + 60), min(255, g + 60), min(255, b + 60))
+            dark_color = (max(0, r - 40), max(0, g - 40), max(0, b - 40))
             
-            # Calculate dynamic flame properties
-            time_offset = current_time * 0.01 + flame_variation
+            # Calculate dynamic particle properties
+            time_offset = current_time * 0.01 + particle_variation
             flicker = 0.8 + 0.4 * math.sin(time_offset * 3) * math.cos(time_offset * 2)
             size_modifier = size_variation * flicker * intensity
             
-            # Create organic flame shape with multiple overlapping circles
             base_size = int(bullet['size'] * size_modifier)
             
-            # Draw main flame body with gradient effect
+            # Draw main particle body with gradient effect
             for i in range(3):
                 layer_size = base_size - i * 2
-                if layer_size <= 0:
-                    break
+                if layer_size <= 0: break
                     
-                # Color gradient from bright center to darker edges
-                if i == 0:
-                    color = (255, int(200 * intensity), 0)  # Bright orange center
-                elif i == 1:
-                    color = (255, int(150 * intensity), 0)  # Medium orange
-                else:
-                    color = (200, int(100 * intensity), 0)  # Darker orange edge
+                if i == 0: color = bright_color
+                elif i == 1: color = base_color
+                else: color = dark_color
                 
-                # Add some organic movement to the flame shape
                 offset_x = int(math.sin(time_offset + i) * 2)
                 offset_y = int(math.cos(time_offset + i * 0.7) * 2)
-                
                 pygame.draw.circle(screen, color, (bx + offset_x, by + offset_y), layer_size)
             
-            # Draw flame tongues (irregular flame extensions)
+            # Draw particle tongues
             for tongue in range(2):
-                tongue_angle = time_offset * 0.5 + tongue * math.pi + flame_variation
+                tongue_angle = time_offset * 0.5 + tongue * math.pi + particle_variation
                 tongue_length = base_size * (0.8 + 0.4 * math.sin(time_offset * 2))
                 tongue_x = bx + int(math.cos(tongue_angle) * tongue_length)
                 tongue_y = by + int(math.sin(tongue_angle) * tongue_length)
                 tongue_size = max(1, int(base_size * 0.4 * flicker))
                 
-                # Gradient for flame tongues
                 for j in range(2):
-                    if j == 0:
-                        tongue_color = (255, int(180 * intensity), 0)
-                    else:
-                        tongue_color = (200, int(120 * intensity), 0)
+                    if j == 0: tongue_color = bright_color
+                    else: tongue_color = base_color
                     pygame.draw.circle(screen, tongue_color, (tongue_x, tongue_y), tongue_size - j)
-            
-            # Draw trailing flame particles with organic movement
-            for i in range(4):
-                trail_progress = (i + 1) * 0.25
-                trail_x = int(bx - bullet['dx'] * bullet['speed'] * trail_progress * 0.4)
-                trail_y = int(by - bullet['dy'] * bullet['speed'] * trail_progress * 0.4)
-                
-                # Add organic movement to trail
-                trail_offset_x = int(math.sin(time_offset * 2 + i) * 3)
-                trail_offset_y = int(math.cos(time_offset * 1.5 + i) * 3)
-                trail_x += trail_offset_x
-                trail_y += trail_offset_y
-                
-                trail_size = max(1, int(base_size * (1 - trail_progress) * 0.6))
-                trail_alpha = int(255 * (1 - trail_progress) * 0.8)
-                
-                # Trail color gradient
-                if trail_progress < 0.5:
-                    trail_color = (255, int(150 * intensity), 0)
-                else:
-                    trail_color = (200, int(100 * intensity), 0)
-                
-                pygame.draw.circle(screen, trail_color, (trail_x, trail_y), trail_size)
-            
-            # Draw flickering ember particles
-            for ember in range(3):
-                ember_angle = time_offset * 0.3 + ember * 2.1 + flame_variation
-                ember_radius = base_size * (0.3 + 0.2 * math.sin(time_offset + ember))
-                ember_x = bx + int(math.cos(ember_angle) * ember_radius)
-                ember_y = by + int(math.sin(ember_angle) * ember_radius)
-                ember_size = max(1, int(base_size * 0.2 * flicker))
-                
-                # Bright yellow ember - ensure integer color values
-                ember_green = int(255 * intensity)
-                ember_green = max(0, min(255, ember_green))  # Clamp to valid range
-                ember_color = (255, ember_green, 0)
-                pygame.draw.circle(screen, ember_color, (ember_x, ember_y), ember_size)
             
             continue
 

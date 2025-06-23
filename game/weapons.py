@@ -33,6 +33,7 @@ class DamageType(Enum):
     PHYSICAL = auto()
     FIRE = auto()
     ICE = auto()
+    POISON = auto()
 
 @dataclass
 class CommonStats:
@@ -349,4 +350,152 @@ def create_laser_beam():
         damage_type=DamageType.PHYSICAL
     )
     uncommon = UncommonStats(piercing=10000)
-    return Weapon(common, uncommon) 
+    return Weapon(common, uncommon)
+
+def create_poison_dart_gun():
+    common = CommonStats(
+        name="Poison Dart Gun",
+        accuracy=5/360,
+        range=12,
+        damage=10,  # Base damage for the poison DoT
+        fire_rate=60,
+        fire_mode=FireMode.SINGLE,
+        clip_size=10,
+        reload_speed=2.5,
+        bullet_size=0.15,
+        bullet_color=(0, 255, 0),  # Green
+        bullet_speed=15,
+        ammo=50,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(piercing=0)
+    return Weapon(common, uncommon)
+
+# --- LEVEL 10 "RIDICULOUS" WEAPONS ---
+
+def create_apocalypse_engine():
+    """Calls down a cluster of poison bombs from the sky."""
+    common = CommonStats(
+        name="Apocalypse Engine",
+        accuracy=15/360, range=1000, damage=40, fire_rate=20, fire_mode=FireMode.ORBITAL,
+        clip_size=5, reload_speed=8.0, bullet_size=0.8, bullet_color=(107, 142, 35),
+        bullet_speed=10, ammo=20, specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=10, contact_effect=ContactEffect.EXPLODE, damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(splash=4.0)
+    unique = UniqueStats(drop_height=1200)
+    return Weapon(common, uncommon, unique)
+
+def create_glacial_torrent():
+    """Fires a wide cone of piercing ice shards."""
+    common = CommonStats(
+        name="Glacial Torrent",
+        accuracy=20/360, range=10, damage=5, fire_rate=90, fire_mode=FireMode.SHOTGUN,
+        clip_size=30, reload_speed=4.0, bullet_size=0.1, bullet_color=(175, 238, 238),
+        bullet_speed=25, ammo=150, specialization_type=WeaponSpecialization.SHOTGUNS,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(volley=15, spread=45, piercing=3)
+    return Weapon(common, uncommon)
+
+def create_serpents_breath():
+    """Spews a cone of toxic gas that poisons enemies."""
+    common = CommonStats(
+        name="Serpent's Breath",
+        accuracy=30/360, range=7, damage=8, fire_rate=200, fire_mode=FireMode.SPRAY,
+        clip_size=150, reload_speed=5.0, bullet_size=0.2, bullet_color=(153, 204, 153),
+        bullet_speed=8, ammo=400, specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(volley=5, spread=25, piercing=0)
+    return Weapon(common, uncommon)
+
+def create_singularity_beam():
+    """A continuous orbital beam that dramatically slows anything it touches."""
+    common = CommonStats(
+        name="Singularity Beam",
+        accuracy=0, range=1000, damage=15, fire_rate=30, fire_mode=FireMode.ORBITAL_BEAM,
+        clip_size=1, reload_speed=10.0, bullet_size=0, bullet_color=(240, 248, 255),
+        bullet_speed=0, ammo=5, specialization_type=WeaponSpecialization.PRECISION,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(warm_up_time=3.0, splash=3.0)
+    unique = UniqueStats(beam_duration=10.0, beam_damage_tick=0.1)
+    return Weapon(common, uncommon, unique)
+
+def create_ricocheting_venom():
+    """Fires poison darts that bounce relentlessly off walls."""
+    common = CommonStats(
+        name="Ricocheting Venom",
+        accuracy=2/360, range=30, damage=12, fire_rate=180, fire_mode=FireMode.AUTOMATIC,
+        clip_size=40, reload_speed=3.0, bullet_size=0.1, bullet_color=(85, 107, 47),
+        bullet_speed=20, ammo=200, specialization_type=WeaponSpecialization.PISTOLS,
+        specialization_level=10, contact_effect=ContactEffect.DAMAGE_BOUNCE, damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(bounce_limit=8, piercing=0)
+    return Weapon(common, uncommon)
+
+def create_inferno_shotgun():
+    """A shotgun that fires pellets that explode on impact."""
+    common = CommonStats(
+        name="Inferno Shotgun",
+        accuracy=25/360, range=8, damage=25, fire_rate=60, fire_mode=FireMode.SHOTGUN,
+        clip_size=12, reload_speed=4.5, bullet_size=0.1, bullet_color=(255, 69, 0),
+        bullet_speed=15, ammo=60, specialization_type=WeaponSpecialization.SHOTGUNS,
+        specialization_level=10, contact_effect=ContactEffect.EXPLODE, damage_type=DamageType.FIRE
+    )
+    uncommon = UncommonStats(volley=8, spread=30, splash=1.5)
+    return Weapon(common, uncommon)
+
+def create_the_kraken():
+    """Unleashes a volley of homing poison missiles."""
+    common = CommonStats(
+        name="The Kraken",
+        accuracy=45/360, range=25, damage=15, fire_rate=30, fire_mode=FireMode.SHOTGUN,
+        clip_size=8, reload_speed=6.0, bullet_size=0.25, bullet_color=(0, 100, 0),
+        bullet_speed=10, ammo=48, specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(volley=8, spread=90, homing_angle=180, homing_time=3.0, piercing=1)
+    return Weapon(common, uncommon)
+
+def create_comets_fury():
+    """Calls down a massive, high-damage projectile that freezes enemies in a large radius."""
+    common = CommonStats(
+        name="Comet's Fury",
+        accuracy=10/360, range=1000, damage=150, fire_rate=10, fire_mode=FireMode.ORBITAL,
+        clip_size=1, reload_speed=12.0, bullet_size=1.2, bullet_color=(224, 255, 255),
+        bullet_speed=8, ammo=10, specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=10, contact_effect=ContactEffect.EXPLODE, damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(splash=6.0)
+    unique = UniqueStats(drop_height=1500)
+    return Weapon(common, uncommon, unique)
+
+def create_gatling_freezer():
+    """A minigun that fires a rapid stream of slowing ice bullets."""
+    common = CommonStats(
+        name="Gatling Freezer",
+        accuracy=20/360, range=15, damage=2, fire_rate=900, fire_mode=FireMode.AUTOMATIC,
+        clip_size=300, reload_speed=7.0, bullet_size=0.08, bullet_color=(135, 206, 250),
+        bullet_speed=22, ammo=900, specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(piercing=1, warm_up_time=1.5)
+    return Weapon(common, uncommon)
+
+def create_world_ender():
+    """A devastating orbital beam that blankets a large area with poison."""
+    common = CommonStats(
+        name="World Ender",
+        accuracy=0, range=1000, damage=20, fire_rate=30, fire_mode=FireMode.ORBITAL_BEAM,
+        clip_size=1, reload_speed=15.0, bullet_size=0, bullet_color=(0, 255, 0),
+        bullet_speed=0, ammo=3, specialization_type=WeaponSpecialization.EXPLOSIVES,
+        specialization_level=10, contact_effect=ContactEffect.PIERCE, damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(warm_up_time=5.0, splash=5.0)
+    unique = UniqueStats(beam_duration=15.0, beam_damage_tick=0.25)
+    return Weapon(common, uncommon, unique) 

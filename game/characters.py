@@ -11,6 +11,18 @@ from game.weapons import (
     create_freeze_gun,
     create_ice_sprayer,
     create_laser_beam,
+    create_poison_dart_gun,
+    # Ridiculous Weapons
+    create_apocalypse_engine,
+    create_glacial_torrent,
+    create_serpents_breath,
+    create_singularity_beam,
+    create_ricocheting_venom,
+    create_inferno_shotgun,
+    create_the_kraken,
+    create_comets_fury,
+    create_gatling_freezer,
+    create_world_ender,
     WeaponSpecialization
 )
 
@@ -50,10 +62,14 @@ TESTY = Character(
     ap_regen=0.1,
     revival_time=5,
     weapons=[
-        create_solar_death_beam(),
-        create_flamethrower(),
-        create_missile_striker(),
-        create_laser_beam()
+        # --- Standard Weapons ---
+        create_ricochet_pistol(),        # --- Ridiculous Weapons ---
+        # create_apocalypse_engine(),
+        create_ricocheting_venom(),
+        create_poison_dart_gun(),
+        # create_the_kraken(),
+        # create_comets_fury(),
+
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
