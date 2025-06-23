@@ -80,8 +80,12 @@ TESTY = Character(
 
         # --- New Batch: Toggle below ---
 
-        create_knockback_gun(),
-        create_combo_gun(),
+        create_solar_death_beam(),
+        create_grenade(),
+        create_ricochet_pistol(),
+        create_gatling_freezer(),
+        create_wall_of_lead(),
+        create_serpents_breath()
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
