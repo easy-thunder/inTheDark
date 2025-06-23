@@ -425,6 +425,15 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
                 bullet['x'] += bullet['velocity_x']
                 bullet['y'] += bullet['velocity_y']
                 bullet['distance_traveled'] += math.hypot(bullet['velocity_x'], bullet['velocity_y'])
+                # Wall bounce logic for flying phase
+                grenade_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], bullet['size']*2, bullet['size']*2)
+                for wall in walls:
+                    if grenade_rect.colliderect(wall):
+                        # Simple bounce: reverse velocity and dampen
+                        if abs(wall.left - grenade_rect.right) < 5 or abs(wall.right - grenade_rect.left) < 5:
+                            bullet['velocity_x'] *= -0.7
+                        if abs(wall.top - grenade_rect.bottom) < 5 or abs(wall.bottom - grenade_rect.top) < 5:
+                            bullet['velocity_y'] *= -0.7
                 # Use dot product to check if passed landing point
                 start_x, start_y = bullet['start_x'], bullet['start_y']
                 landing_x, landing_y = bullet['landing_x'], bullet['landing_y']
@@ -439,6 +448,14 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
             elif bullet['phase'] == 'rolling':
                 bullet['x'] += bullet['velocity_x']
                 bullet['y'] += bullet['velocity_y']
+                # Wall bounce logic for rolling phase
+                grenade_rect = pygame.Rect(bullet['x'] - bullet['size'], bullet['y'] - bullet['size'], bullet['size']*2, bullet['size']*2)
+                for wall in walls:
+                    if grenade_rect.colliderect(wall):
+                        if abs(wall.left - grenade_rect.right) < 5 or abs(wall.right - grenade_rect.left) < 5:
+                            bullet['velocity_x'] *= -0.7
+                        if abs(wall.top - grenade_rect.bottom) < 5 or abs(wall.bottom - grenade_rect.top) < 5:
+                            bullet['velocity_y'] *= -0.7
                 bullet['roll_left'] -= math.hypot(bullet['velocity_x'], bullet['velocity_y'])
                 bullet['velocity_x'] *= 0.92
                 bullet['velocity_y'] *= 0.92
