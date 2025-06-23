@@ -472,8 +472,8 @@ def create_comets_fury():
         bullet_speed=8, ammo=10, specialization_type=WeaponSpecialization.EXPLOSIVES,
         specialization_level=10, contact_effect=ContactEffect.EXPLODE, damage_type=DamageType.ICE
     )
-    uncommon = UncommonStats(splash=6.0)
-    unique = UniqueStats(drop_height=1500)
+    uncommon = UncommonStats(splash=6.0,drop_height=1500)
+    unique = UniqueStats()
     return Weapon(common, uncommon, unique)
 
 def create_gatling_freezer():
@@ -499,4 +499,226 @@ def create_world_ender():
     )
     uncommon = UncommonStats(warm_up_time=5.0, splash=5.0)
     unique = UniqueStats(beam_duration=15.0, beam_damage_tick=0.25)
-    return Weapon(common, uncommon, unique) 
+    return Weapon(common, uncommon, unique)
+
+# --- NEW BATCH OF WILD WEAPONS ---
+
+def create_wall_of_lead():
+    common = CommonStats(
+        name="Wall of Lead",
+        accuracy=360/360,  # 360 degree spread
+        range=6,
+        damage=2,
+        fire_rate=1200,
+        fire_mode=FireMode.SPRAY,
+        clip_size=1000,
+        reload_speed=10.0,
+        bullet_size=0.12,
+        bullet_color=(180, 180, 180),
+        bullet_speed=10,
+        ammo=3000,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(volley=40, spread=360)
+    return Weapon(common, uncommon)
+
+def create_absolute_sniper():
+    common = CommonStats(
+        name="Absolute Sniper",
+        accuracy=0.5/360,
+        range=100,
+        damage=200,
+        fire_rate=6,
+        fire_mode=FireMode.SINGLE,
+        clip_size=5,
+        reload_speed=4.0,
+        bullet_size=0.18,
+        bullet_color=(255, 255, 224),
+        bullet_speed=60,
+        ammo=30,
+        specialization_type=WeaponSpecialization.PRECISION,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(piercing=5)
+    return Weapon(common, uncommon)
+
+def create_assault_shotgun():
+    common = CommonStats(
+        name="Assault Shotgun",
+        accuracy=10/360,
+        range=8,
+        damage=8,
+        fire_rate=300,
+        fire_mode=FireMode.SHOTGUN,
+        clip_size=30,
+        reload_speed=3.0,
+        bullet_size=0.11,
+        bullet_color=(255, 200, 100),
+        bullet_speed=14,
+        ammo=120,
+        specialization_type=WeaponSpecialization.SHOTGUNS,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(volley=6, spread=18, piercing=1)
+    return Weapon(common, uncommon)
+
+def create_classic_assault_rifle():
+    common = CommonStats(
+        name="Classic Assault Rifle",
+        accuracy=4/360,
+        range=18,
+        damage=7,
+        fire_rate=600,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=40,
+        reload_speed=2.2,
+        bullet_size=.1,
+        bullet_color=(150, 150, 150),
+        bullet_speed=14,
+        ammo=240,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(piercing=1)
+    return Weapon(common, uncommon)
+
+def create_toxic_assault_rifle():
+    common = CommonStats(
+        name="Toxic Assault Rifle",
+        accuracy=4/360,
+        range=18,
+        damage=6,
+        fire_rate=600,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=40,
+        reload_speed=2.2,
+        bullet_size=0.09,
+        bullet_color=(0, 200, 0),
+        bullet_speed=18,
+        ammo=240,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(piercing=1)
+    return Weapon(common, uncommon)
+
+def create_cryo_assault_rifle():
+    common = CommonStats(
+        name="Cryo Assault Rifle",
+        accuracy=4/360,
+        range=18,
+        damage=6,
+        fire_rate=600,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=40,
+        reload_speed=2.2,
+        bullet_size=0.09,
+        bullet_color=(100, 200, 255),
+        bullet_speed=18,
+        ammo=240,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.ICE
+    )
+    uncommon = UncommonStats(piercing=1)
+    return Weapon(common, uncommon)
+
+def create_incendiary_assault_rifle():
+    common = CommonStats(
+        name="Incendiary Assault Rifle",
+        accuracy=4/360,
+        range=18,
+        damage=6,
+        fire_rate=600,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=40,
+        reload_speed=2.2,
+        bullet_size=0.09,
+        bullet_color=(255, 100, 0),
+        bullet_speed=18,
+        ammo=240,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.FIRE
+    )
+    uncommon = UncommonStats(piercing=1)
+    return Weapon(common, uncommon)
+
+def create_ricochet_minigun():
+    common = CommonStats(
+        name="Ricochet Minigun",
+        accuracy=15/360,
+        range=12,
+        damage=3,
+        fire_rate=1200,
+        fire_mode=FireMode.AUTOMATIC,
+        clip_size=300,
+        reload_speed=8.0,
+        bullet_size=0.08,
+        bullet_color=(200, 200, 200),
+        bullet_speed=16,
+        ammo=1200,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.DAMAGE_BOUNCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(bounce_limit=6, warm_up_time=3)
+    return Weapon(common, uncommon)
+
+def create_piercing_laser_smg():
+    common = CommonStats(
+        name="Piercing Laser SMG",
+        accuracy=8/360,
+        range=40,
+        damage=5,
+        fire_rate=900,
+        fire_mode=FireMode.BEAM,
+        clip_size=60,
+        reload_speed=3.5,
+        bullet_size=0.07,
+        bullet_color=(255, 0, 255),
+        bullet_speed=40,
+        ammo=300,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.PHYSICAL
+    )
+    uncommon = UncommonStats(piercing=3)
+    return Weapon(common, uncommon)
+
+def create_poison_spray_blaster():
+    common = CommonStats(
+        name="Poison Spray Blaster",
+        accuracy=60/360,
+        range=7,
+        damage=4,
+        fire_rate=400,
+        fire_mode=FireMode.SPRAY,
+        clip_size=120,
+        reload_speed=4.0,
+        bullet_size=0.13,
+        bullet_color=(0, 255, 100),
+        bullet_speed=10,
+        ammo=400,
+        specialization_type=WeaponSpecialization.ASSAULT,
+        specialization_level=10,
+        contact_effect=ContactEffect.PIERCE,
+        damage_type=DamageType.POISON
+    )
+    uncommon = UncommonStats(volley=12, spread=60)
+    return Weapon(common, uncommon) 

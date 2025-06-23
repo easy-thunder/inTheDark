@@ -23,6 +23,17 @@ from game.weapons import (
     create_comets_fury,
     create_gatling_freezer,
     create_world_ender,
+    # New Batch
+    create_wall_of_lead,
+    create_absolute_sniper,
+    create_assault_shotgun,
+    create_classic_assault_rifle,
+    create_toxic_assault_rifle,
+    create_cryo_assault_rifle,
+    create_incendiary_assault_rifle,
+    create_ricochet_minigun,
+    create_piercing_laser_smg,
+    create_poison_spray_blaster,
     WeaponSpecialization
 )
 
@@ -63,22 +74,14 @@ TESTY = Character(
     revival_time=5,
     weapons=[
         # --- Standard Weapons ---
-        create_missile_striker(),   
-        # create_flamethrower(),
-        create_mini_gun(),
-        create_ricochet_pistol(),
-        # create_ice_sprayer(),
-        create_the_kraken(),
-        create_serpents_breath(),
-        create_grenade(),
-   
-        
-        # --- Ridiculous Weapons ---
-        # create_apocalypse_engine(),
-        # create_missile_striker(),
-        # create_the_kraken(),
-        # create_comets_fury(),
 
+        # --- New Batch: Toggle below ---
+
+        create_cryo_assault_rifle(),
+        create_incendiary_assault_rifle(),
+        create_ricochet_minigun(),
+        create_piercing_laser_smg(),
+        create_poison_spray_blaster(),
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 5,
