@@ -264,6 +264,12 @@ def create_bullet(player, weapon, weapon_index, tile_size=32, camera_x=0, camera
         bullet['travel_distance'] = travel_distance
         bullet['distance_traveled'] = 0
     
+    # Add homing-specific properties if present
+    if hasattr(weapon.uncommon, 'homing_angle') and weapon.uncommon.homing_angle:
+        bullet['homing_angle'] = weapon.uncommon.homing_angle
+        bullet['homing_time'] = weapon.uncommon.homing_time or 0
+        bullet['homing_timer'] = 0  # ms
+
     return bullet
 
 def create_beam(x, y, angle, weapon):
@@ -408,6 +414,35 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
             
         else:
             # Handle regular bullets (existing logic)
+            # Homing logic
+            if bullet.get('homing_angle') and bullet.get('homing_time', 0) > 0 and dt > 0:
+                bullet['homing_timer'] = bullet.get('homing_timer', 0) + int(dt * 1000)
+                if bullet['homing_timer'] < bullet['homing_time'] * 1000:
+                    # Find nearest living creature
+                    nearest = None
+                    nearest_dist = float('inf')
+                    for creature in creatures:
+                        if creature.hp > 0:
+                            dist = math.hypot(creature.rect.centerx - bullet['x'], creature.rect.centery - bullet['y'])
+                            if dist < nearest_dist:
+                                nearest = creature
+                                nearest_dist = dist
+                    if nearest:
+                        # Calculate angle to target
+                        dx = nearest.rect.centerx - bullet['x']
+                        dy = nearest.rect.centery - bullet['y']
+                        target_angle = math.atan2(dy, dx)
+                        current_angle = math.atan2(bullet['dy'], bullet['dx'])
+                        # Find smallest angle difference
+                        diff = (target_angle - current_angle + math.pi) % (2 * math.pi) - math.pi
+                        max_turn = math.radians(bullet['homing_angle'])
+                        # Clamp the turn
+                        if abs(diff) < max_turn:
+                            new_angle = target_angle
+                        else:
+                            new_angle = current_angle + max_turn * (1 if diff > 0 else -1)
+                        bullet['dx'] = math.cos(new_angle)
+                        bullet['dy'] = math.sin(new_angle)
             bullet['x'] += bullet['dx'] * bullet['speed']
             bullet['y'] += bullet['dy'] * bullet['speed']
             bullet['distance'] += bullet['speed']

@@ -66,6 +66,8 @@ class UncommonStats:
     piercing: Optional[int] = None
     pellets: Optional[int] = None
     spray_angle: Optional[float] = None
+    homing_angle: Optional[float] = None
+    homing_time: Optional[float] = None
 
 @dataclass
 class UniqueStats:

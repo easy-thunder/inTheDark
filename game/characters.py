@@ -67,9 +67,10 @@ TESTY = Character(
         # create_flamethrower(),
         create_mini_gun(),
         create_inferno_shotgun(),
-        create_ice_sprayer(),
-        # create_the_kraken(),
-        create_serpents_breath()
+        # create_ice_sprayer(),
+        create_the_kraken(),
+        create_serpents_breath(),
+        create_grenade(),
    
         
         # --- Ridiculous Weapons ---
