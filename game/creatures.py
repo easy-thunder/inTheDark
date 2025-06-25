@@ -9,20 +9,33 @@ creature_id_counter = itertools.count()
 
 class Creature:
     """A flexible class for any non-player character in the game."""
+    # Fixed pixel sizes for each creature category
     SIZE_MAP = {
-        'small': 0.25,
-        'medium': 0.5,
-        'large': 1.0,
-        'xlarge': 1.5,
-        'gigantic': 2.0
+        'tiny': 12,      # Very small creatures (rats, insects)
+        'small': 24,     # Small creatures (cats, dogs)
+        'medium': 32,    # Medium creatures (humans, zombies)
+        'large': 48,     # Large creatures (bears, ogres)
+        'xlarge': 64,    # Extra large creatures (elephants, giants)
+        'gigantic': 96   # Boss-sized creatures
     }
 
-    def __init__(self, x, y, size_str, hp, damage, speed, player_size, movement_profile, attack_profile, color=(0,255,0)):
+    # Size to knockback resistance mapping (higher = more resistant)
+    SIZE_RESISTANCE = {
+        'tiny': 0.1,      # Takes 90% of knockback
+        'small': 0.3,     # Takes 70% of knockback
+        'medium': 0.5,    # Takes 50% of knockback
+        'large': 0.7,     # Takes 30% of knockback
+        'xlarge': 0.85,   # Takes 15% of knockback
+        'gigantic': 0.95  # Takes 5% of knockback
+    }
+
+    def __init__(self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0)):
         # Core attributes
         self.x = float(x)
         self.y = float(y)
         self.size_str = size_str
         self.hp = hp
+        self.max_hp = hp  # Add max_hp attribute
         self.damage = damage
         self.speed = speed
         self.color = color
@@ -31,267 +44,166 @@ class Creature:
         self.movement_profile = movement_profile
         self.attack_profile = attack_profile
         
-        # Calculate size based on player_size, which is derived from screen size
-        self.width = int(player_size * self.SIZE_MAP[self.size_str])
-        self.height = int(player_size * self.SIZE_MAP[self.size_str])
+        # Calculate size based on size_str (fixed pixel values)
+        self.width = self.SIZE_MAP[self.size_str]
+        self.height = self.SIZE_MAP[self.size_str]
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
         self.id = next(creature_id_counter)
+        
+        # Knockback attributes
         self.knockback_dx = 0
         self.knockback_dy = 0
-        self.knockback_resistance = 1.0  # Can be overridden by specific creatures
         self.knockback_friction = 0.85  # Knockback decay rate
+        self.knockback_resistance = self.SIZE_RESISTANCE[self.size_str]
+        
+        # Initialize any status effects
+        self.burning_effects = {}
+        self.poison_stacks = []
+        self.slow_duration = 0
+        self.slow_factor = 1.0
+        self.base_speed = speed
+
+    def apply_slow(self, duration, factor):
+        """Apply a slow effect to the creature (default: change color and slow factor)"""
+        self.slow_duration = duration
+        self.slow_factor = factor
+        self.color = (100, 150, 255)  # Icy blue
 
     def update(self, dt, walls, players):
-        # Apply knockback movement first
+        # Handle knockback movement first
         if abs(self.knockback_dx) > 0.1 or abs(self.knockback_dy) > 0.1:
-            # Store original position
             original_x = self.rect.x
             original_y = self.rect.y
-            
-            # Try to move with knockback
-            self.rect.x += self.knockback_dx
-            # Check wall collisions on X axis
+            resistance = self.knockback_resistance
+            actual_dx = self.knockback_dx * (1 - resistance)
+            actual_dy = self.knockback_dy * (1 - resistance)
+            self.rect.x += actual_dx
             for wall in walls:
                 if self.rect.colliderect(wall):
-                    if self.knockback_dx > 0:
+                    if actual_dx > 0:
                         self.rect.right = wall.left
                     else:
                         self.rect.left = wall.right
-                    self.knockback_dx *= -0.5  # Bounce with reduced force
-            
-            self.rect.y += self.knockback_dy
-            # Check wall collisions on Y axis
+                    self.knockback_dx *= -0.5
+            self.rect.y += actual_dy
             for wall in walls:
                 if self.rect.colliderect(wall):
-                    if self.knockback_dy > 0:
+                    if actual_dy > 0:
                         self.rect.bottom = wall.top
                     else:
                         self.rect.top = wall.bottom
-                    self.knockback_dy *= -0.5  # Bounce with reduced force
-            
-            # Apply friction to knockback
+                    self.knockback_dy *= -0.5
             self.knockback_dx *= self.knockback_friction
             self.knockback_dy *= self.knockback_friction
-        
-        # Continue with normal movement
+        # Update slow effect
+        if self.slow_duration > 0:
+            self.slow_duration -= dt * 1000
+            if self.slow_duration <= 0:
+                self.slow_factor = 1.0
+                self.color = self.original_color if hasattr(self, 'original_color') else self.color
+        # Continue with normal movement using modified speed
+        current_speed = self.speed * self.slow_factor
         if self.movement_profile:
             self.movement_profile.move(self, players)
         if self.attack_profile:
             self.attack_profile.execute(self, players)
-
-    def draw(self, surface, camera_x, camera_y, game_x, game_y):
-        """Draws the creature relative to the camera."""
-        draw_rect = self.rect.move(-camera_x + game_x, -camera_y + game_y)
-        pygame.draw.rect(surface, self.color, draw_rect)
-
-class ZombieCat:
-    def __init__(self, x, y, size):
-        self.id = next(creature_id_counter)
-        self.x = x
-        self.y = y
-        self.width = int(size * 0.8)
-        self.height = int(size * 0.8)
-        self.rect = pygame.Rect(x, y, self.width, self.height)
-        self.hp = 15
-        self.max_hp = 15
-        self.original_speed = 2.0
-        self.speed = 2.0
-        self.damage = 5
-        self.movement_profile = DirectApproach()
-        self.attack_profile = MeleeCollisionAttack(cooldown=1000)
-        
-        # Status Effect Attributes
-        self.is_slowed = False
-        self.slow_duration = 0
-        self.slow_timer = 0
-        self.slow_color = (173, 216, 230) # Icy blue
-        self.poison_effects = []
-
-    def apply_slow(self, duration, factor):
-        if not self.is_slowed:
-            self.speed *= factor
-        self.is_slowed = True
-        self.slow_duration = duration
-        self.slow_timer = pygame.time.get_ticks()
-
-    def update(self, players):
-        if self.hp <= 0: return
-
-        if self.is_slowed:
-            if pygame.time.get_ticks() - self.slow_timer > self.slow_duration:
-                self.is_slowed = False
-                self.speed = self.original_speed
-
-        living_players = [p for p in players if not p.dead]
-        if self.movement_profile: self.movement_profile.move(self, living_players)
-        if self.attack_profile: self.attack_profile.execute(self, living_players)
         self.rect.topleft = (self.x, self.y)
 
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
-        if self.hp <= 0: return
-        draw_rect = self.rect.move(-camera_x + game_x, -camera_y + game_y)
-        
-        color = (139, 69, 19)
-        if self.is_slowed:
-            color = self.slow_color
-        
-        if hasattr(self, 'poison_effects') and self.poison_effects:
-            # Blend poison green with current color
-            r, g, b = color
-            num_stacks = len(self.poison_effects)
-            # Intensity of green increases with stacks
-            alpha = min(0.7, 0.2 + (num_stacks * 0.1))
-            pr, pg, pb = (0, 180, 0)
-            color = (
-                int(r * (1-alpha) + pr * alpha),
-                int(g * (1-alpha) + pg * alpha),
-                int(b * (1-alpha) + pb * alpha)
-            )
+        screen_x = self.rect.x - camera_x + game_x
+        screen_y = self.rect.y - camera_y + game_y
+        pygame.draw.rect(surface, self.color, (screen_x, screen_y, self.rect.width, self.rect.height))
+        # Draw HP bar
+        hp_bar_width = self.rect.width
+        hp_bar_height = 4
+        hp_ratio = max(0, self.hp / self.max_hp)
+        pygame.draw.rect(surface, (255, 0, 0), (screen_x, screen_y - 6, hp_bar_width, hp_bar_height))
+        pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
-        pygame.draw.rect(surface, color, draw_rect)
+class ZombieCat(Creature):
+    def __init__(self, x, y):
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='small',
+            hp=30,
+            damage=5,
+            speed=3,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            color=(100, 200, 100)
+        )
+        self.original_color = self.color
 
-class ToughZombieCat:
-    def __init__(self, x, y, size):
-        self.id = next(creature_id_counter)
-        self.x = x
-        self.y = y
-        self.width = int(size * 0.8)
-        self.height = int(size * 0.8)
-        self.rect = pygame.Rect(x, y, self.width, self.height)
-        self.hp = 100
-        self.max_hp = 100
-        self.original_speed = 2.0
-        self.speed = 2.0
-        self.damage = 5
-        self.movement_profile = DirectApproach()
-        self.attack_profile = MeleeCollisionAttack(cooldown=1000)
-        
-        # Status Effect Attributes
-        self.is_slowed = False
-        self.slow_duration = 0
-        self.slow_timer = 0
-        self.slow_color = (173, 216, 230) # Icy blue
-        self.poison_effects = []
+class ToughZombieCat(Creature):
+    def __init__(self, x, y):
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='medium',
+            hp=80,
+            damage=12,
+            speed=2,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=800),
+            color=(120, 80, 80)
+        )
+        self.original_color = self.color
 
-    def apply_slow(self, duration, factor):
-        if not self.is_slowed:
-            self.speed *= factor
-        self.is_slowed = True
-        self.slow_duration = duration
-        self.slow_timer = pygame.time.get_ticks()
-
-    def update(self, players):
-        if self.hp <= 0: return
-
-        if self.is_slowed:
-            if pygame.time.get_ticks() - self.slow_timer > self.slow_duration:
-                self.is_slowed = False
-                self.speed = self.original_speed
-
-        living_players = [p for p in players if not p.dead]
-        if self.movement_profile: self.movement_profile.move(self, living_players)
-        if self.attack_profile: self.attack_profile.execute(self, living_players)
-        self.rect.topleft = (self.x, self.y)
-
-    def draw(self, surface, camera_x, camera_y, game_x, game_y):
-        if self.hp <= 0: return
-        draw_rect = self.rect.move(-camera_x + game_x, -camera_y + game_y)
-        
-        color = (139, 0, 0) # Dark Red
-        if self.is_slowed:
-            color = self.slow_color
-        
-        if hasattr(self, 'poison_effects') and self.poison_effects:
-            # Blend poison green with current color
-            r, g, b = color
-            num_stacks = len(self.poison_effects)
-            # Intensity of green increases with stacks
-            alpha = min(0.7, 0.2 + (num_stacks * 0.1))
-            pr, pg, pb = (0, 180, 0)
-            color = (
-                int(r * (1-alpha) + pr * alpha),
-                int(g * (1-alpha) + pg * alpha),
-                int(b * (1-alpha) + pb * alpha)
-            )
-
-        pygame.draw.rect(surface, color, draw_rect)
-
-class ThornyVenomThistle:
-    def __init__(self, x, y, size):
-        self.id = next(creature_id_counter)
-        self.x = x
-        self.y = y
-        self.width = size
-        self.height = size
-        self.rect = pygame.Rect(x, y, size, size)
-        self.hp = 20
-        self.max_hp = 20
-        self.speed = 0  # Stationary
-        self.damage = 10
+class ThornyVenomThistle(Creature):
+    def __init__(self, x, y):
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='large',  # Thistles are large
+            hp=120,
+            damage=18,
+            speed=0,  # Stationary
+            movement_profile=None,
+            attack_profile=None,
+            color=(80, 200, 80)
+        )
+        self.original_color = self.color
         self.last_attack_time = 0
-        self.attack_cooldown = 1500  # 1.5 seconds
-        self.attack_range = 40  # Slightly larger attack range since it's stationary
-        self.is_slowed = False
-        self.poison_effects = []
+        self.attack_cooldown = 1500  # milliseconds
+        self.attack_range = 40  # pixels
 
     def apply_slow(self, duration, factor):
-        """A dummy method to allow for consistent API calls."""
-        self.is_slowed = True # You could add a visual effect here if desired
+        pass  # Thistles are stationary, so slow has no effect
 
-    def update(self, players):
+    def update(self, dt, walls, players):
+        # Stationary, but can attack players in range
         if self.hp <= 0:
             return
-        
-        # Find closest living player
-        closest_player = None
-        closest_distance = float('inf')
-        
+        now = pygame.time.get_ticks()
         for player in players:
-            if not player.dead:
-                distance = math.hypot(player.x - self.x, player.y - self.y)
-                if distance < closest_distance:
-                    closest_distance = distance
-                    closest_player = player
-        
-        if closest_player is None:
-            return
-        
-        # Check if in attack range
-        if closest_distance <= self.attack_range:
-            now = pygame.time.get_ticks()
-            if now - self.last_attack_time >= self.attack_cooldown:
-                closest_player.take_damage(self.damage)
-                self.last_attack_time = now
-    
-    def draw(self, surface, camera_x, camera_y, game_x, game_y):
-        if self.hp <= 0:
-            return
-        
-        draw_rect = self.rect.move(-camera_x + game_x, -camera_y + game_y)
-        
-        color = self.color
-        if hasattr(self, 'poison_effects') and self.poison_effects:
-            # Blend poison green with current color
-            r, g, b = color
-            num_stacks = len(self.poison_effects)
-            # Intensity of green increases with stacks
-            alpha = min(0.7, 0.2 + (num_stacks * 0.1))
-            pr, pg, pb = (0, 180, 0)
-            color = (
-                int(r * (1-alpha) + pr * alpha),
-                int(g * (1-alpha) + pg * alpha),
-                int(b * (1-alpha) + pb * alpha)
-            )
+            if hasattr(player, 'dead') and not player.dead:
+                # Use center points for distance
+                dist = math.hypot(player.rect.centerx - self.rect.centerx, player.rect.centery - self.rect.centery)
+                if dist <= self.attack_range:
+                    if now - self.last_attack_time >= self.attack_cooldown:
+                        if hasattr(player, 'take_damage'):
+                            player.take_damage(self.damage)
+                        self.last_attack_time = now
 
-        pygame.draw.rect(surface, color, draw_rect)
+    def draw(self, surface, camera_x, camera_y, game_x, game_y):
+        screen_x = self.rect.x - camera_x + game_x
+        screen_y = self.rect.y - camera_y + game_y
+        pygame.draw.rect(surface, self.color, (screen_x, screen_y, self.rect.width, self.rect.height))
+        # Draw HP bar
+        hp_bar_width = self.rect.width
+        hp_bar_height = 4
+        hp_ratio = max(0, self.hp / self.max_hp)
+        pygame.draw.rect(surface, (255, 0, 0), (screen_x, screen_y - 6, hp_bar_width, hp_bar_height))
+        pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
 # --- Creature Factory Functions ---
 
-def create_zombie_cat(x, y, size):
-    return ZombieCat(x, y, size)
+def create_zombie_cat(x, y):
+    return ZombieCat(x, y)
 
-def create_tough_zombie_cat(x, y, size):
-    return ToughZombieCat(x, y, size)
+def create_tough_zombie_cat(x, y):
+    return ToughZombieCat(x, y)
 
-def create_thorny_venom_thistle(x, y, size):
-    return ThornyVenomThistle(x, y, size) 
+def create_thorny_venom_thistle(x, y):
+    return ThornyVenomThistle(x, y) 

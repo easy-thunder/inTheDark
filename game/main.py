@@ -5,7 +5,7 @@ import random
 from game.world import World
 from game.stats.stats import GameStats
 from game.characters import TESTY
-from game.creatures import create_zombie_cat, create_tough_zombie_cat
+from game.creatures import create_zombie_cat, create_tough_zombie_cat, create_thorny_venom_thistle
 from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures, update_poison_effects
 from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
@@ -66,18 +66,20 @@ def main():
 
     # --- Creature Management ---
     creatures = []
-    # Spawn 2 regular cats
-    for _ in range(2):
+    # Spawn 3 zombie cats for testing
+    for _ in range(3):
         creatures.append(create_zombie_cat(
             x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
-            y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
-            size=PLAYER_SIZE
+            y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15)
         ))
     # Spawn 1 tough cat for testing
     creatures.append(create_tough_zombie_cat(
         x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
-        y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
-        size=PLAYER_SIZE
+        y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15)
+    ))
+    creatures.append(create_thorny_venom_thistle(
+        x=random.randint(TILE_SIZE * 2, TILE_SIZE * 15),
+        y=random.randint(TILE_SIZE * 2, TILE_SIZE * 15)
     ))
     
     current_max_distance = 0
@@ -124,7 +126,7 @@ def main():
 
         # --- Update and Draw Creatures ---
         for creature in creatures:
-            creature.update(players)
+            creature.update(1/60, visible_walls, players)
         draw_creatures(screen, creatures, camera_x, camera_y, GAME_X, GAME_Y, show_creature_hp)
         cleanup_dead_creatures(creatures)
 
