@@ -84,7 +84,7 @@ TESTY = Character(
         create_grenade(),
         create_piercing_laser_smg(),
         create_gatling_freezer(),
-        create_missile_striker(),
+        create_ricochet_pistol(),
 
     ],
     specializations={

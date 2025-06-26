@@ -4,6 +4,7 @@ from game.ai.attacks import MeleeCollisionAttack
 import math
 import random
 import itertools
+import os
 
 creature_id_counter = itertools.count()
 
@@ -29,7 +30,7 @@ class Creature:
         'gigantic': 0.95  # Takes 5% of knockback
     }
 
-    def __init__(self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0)):
+    def __init__(self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0), image_files=None, facing='right', base_image_direction='right'):
         # Core attributes
         self.x = float(x)
         self.y = float(y)
@@ -62,12 +63,62 @@ class Creature:
         self.slow_duration = 0
         self.slow_factor = 1.0
         self.base_speed = speed
+        self.facing = facing  # Default facing direction
+        self.base_image_direction = base_image_direction  # Direction the provided images face
+        self.animation_state = 'walk'  # Default animation state
+        self.images = {}
+        self.meshes = {}
+        self.hurt_time = None  # When the creature was last hurt
+        self.hurt_duration = 500  # milliseconds
+        if image_files:
+            self.load_and_prepare_images(image_files)
+
+    def load_and_prepare_images(self, image_files):
+        asset_dir = os.path.join(os.path.dirname(__file__), '..', 'assets')
+        required_states = ['walk', 'attack', 'hurt']
+        optional_states = ['secondary_attack', 'tertiary_attack']
+        # Check for required images
+        for state in required_states:
+            if state not in image_files:
+                raise FileNotFoundError(f"Required image for state '{state}' not found in image_files!")
+        # Load all images
+        for state in required_states + optional_states:
+            if state in image_files:
+                filename = image_files[state]
+                path = os.path.join(asset_dir, filename)
+                img = pygame.image.load(path).convert_alpha()
+                img = pygame.transform.smoothscale(img, (self.width, self.height))
+                # Store the base direction
+                self.images[f'{state}_{self.base_image_direction}'] = img
+                self.meshes[f'{state}_{self.base_image_direction}'] = pygame.mask.from_surface(img)
+                # Flip for the opposite direction
+                opposite = 'left' if self.base_image_direction == 'right' else 'right'
+                flipped_img = pygame.transform.flip(img, True, False)
+                self.images[f'{state}_{opposite}'] = flipped_img
+                self.meshes[f'{state}_{opposite}'] = pygame.mask.from_surface(flipped_img)
+
+    def set_animation_state(self, state):
+        if f'{state}_left' in self.images or f'{state}_right' in self.images:
+            self.animation_state = state
+
+    def get_current_image(self):
+        key = f'{self.animation_state}_{self.facing}'
+        return self.images.get(key)
+
+    def get_current_mesh(self):
+        key = f'{self.animation_state}_{self.facing}'
+        return self.meshes.get(key)
 
     def apply_slow(self, duration, factor):
         """Apply a slow effect to the creature (default: change color and slow factor)"""
         self.slow_duration = duration
         self.slow_factor = factor
         self.color = (100, 150, 255)  # Icy blue
+
+    def take_damage(self, amount):
+        self.hp -= amount
+        self.set_animation_state('hurt')
+        self.hurt_time = pygame.time.get_ticks()
 
     def update(self, dt, walls, players):
         # Handle knockback movement first
@@ -108,11 +159,20 @@ class Creature:
         if self.attack_profile:
             self.attack_profile.execute(self, players)
         self.rect.topleft = (self.x, self.y)
+        # Handle hurt animation state
+        if self.animation_state == 'hurt' and self.hurt_time is not None:
+            if pygame.time.get_ticks() - self.hurt_time > self.hurt_duration:
+                self.set_animation_state('walk')
+                self.hurt_time = None
 
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
         screen_x = self.rect.x - camera_x + game_x
         screen_y = self.rect.y - camera_y + game_y
-        pygame.draw.rect(surface, self.color, (screen_x, screen_y, self.rect.width, self.rect.height))
+        image = self.get_current_image()
+        if image:
+            surface.blit(image, (screen_x, screen_y))
+        else:
+            pygame.draw.rect(surface, self.color, (screen_x, screen_y, self.rect.width, self.rect.height))
         # Draw HP bar
         hp_bar_width = self.rect.width
         hp_bar_height = 4
@@ -121,7 +181,15 @@ class Creature:
         pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
 class ZombieCat(Creature):
-    def __init__(self, x, y):
+    def __init__(self, x, y, facing='right', base_image_direction='right'):
+        image_files = {
+            'walk': 'creatures/zombie_cat/walk.png',
+            'attack': 'creatures/zombie_cat/attack.png',
+            'hurt': 'creatures/zombie_cat/hurt.png',
+            # Optionally:
+            # 'secondary_attack': 'creatures/zombie_cat/secondary_attack.png',
+            # 'tertiary_attack': 'creatures/zombie_cat/tertiary_attack.png',
+        }
         super().__init__(
             x=x,
             y=y,
@@ -131,9 +199,27 @@ class ZombieCat(Creature):
             speed=3,
             movement_profile=DirectApproach(),
             attack_profile=MeleeCollisionAttack(cooldown=1000),
-            color=(100, 200, 100)
+            color=(100, 200, 100),
+            image_files=image_files,
+            facing=facing,
+            base_image_direction=base_image_direction
         )
         self.original_color = self.color
+
+    def update(self, dt, walls, players):
+        super().update(dt, walls, players)
+        # Find nearest player for movement direction
+        nearest_player = None
+        min_dist = float('inf')
+        for player in players:
+            if not player.dead:
+                dist = math.hypot(player.rect.centerx - self.rect.centerx, player.rect.centery - self.rect.centery)
+                if dist < min_dist:
+                    min_dist = dist
+                    nearest_player = player
+        if nearest_player:
+            dx = nearest_player.rect.centerx - self.rect.centerx
+            self.facing = 'right' if dx > 0 else 'left'
 
 class ToughZombieCat(Creature):
     def __init__(self, x, y):
