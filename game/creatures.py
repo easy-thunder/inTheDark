@@ -57,7 +57,9 @@ class Creature:
         ability1=None,     # Optional ability 1
         ability2=None,     # Optional ability 2
         ability3=None,     # Optional ability 3
-        ability_fx=None,   # Optional ability effect
+        ability_fx1=None,  # Optional ability 1 effect
+        ability_fx2=None,  # Optional ability 2 effect
+        ability_fx3=None,  # Optional ability 3 effect
         # weapon=None,  # (future use)
         facing='right'
     ):
@@ -96,7 +98,9 @@ class Creature:
         self.ability1 = ability1
         self.ability2 = ability2
         self.ability3 = ability3
-        self.ability_fx = ability_fx
+        self.ability_fx1 = ability_fx1
+        self.ability_fx2 = ability_fx2
+        self.ability_fx3 = ability_fx3
         self.cleave_cooldown = 2000  # milliseconds
         self.last_cleave_time = 0
         self.cleave_range = 60  # pixels
@@ -292,14 +296,15 @@ class ZombieCat(Creature):
             speed=3,
             movement_profile=DirectApproach(),
             attack_profile=MeleeCollisionAttack(cooldown=1000),
-            color=(100, 200, 100),
             image_files=image_files,
             action_type='melee',
             action_fx=MELEE_ACTION_FX.CLEAVE,
             ability1=None,
             ability2=None,
             ability3=None,
-            ability_fx=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
             # weapon=None,  # (future use)
             facing=facing
         )
