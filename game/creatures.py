@@ -5,8 +5,13 @@ import math
 import random
 import itertools
 import os
+from enum import Enum
 
 creature_id_counter = itertools.count()
+
+class Orientation(Enum):
+    LEFT = 'left'
+    RIGHT = 'right'
 
 class Creature:
     """A flexible class for any non-player character in the game."""
@@ -30,8 +35,14 @@ class Creature:
         'gigantic': 0.95  # Takes 5% of knockback
     }
 
-    def __init__(self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0), image_files=None, facing='right', base_image_direction='right'):
-        # Core attributes
+    def __init__(
+        self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0),
+        image_files=None,  # {'walk': (filepath, orientation), 'hurt': (filepath, orientation)}
+        attack_type='melee',
+        action_fx='cleave',
+        # weapon=None,  # (future use)
+        facing='right'
+    ):
         self.x = float(x)
         self.y = float(y)
         self.size_str = size_str
@@ -40,62 +51,50 @@ class Creature:
         self.damage = damage
         self.speed = speed
         self.color = color
-        
-        # AI Behavior Profiles
         self.movement_profile = movement_profile
         self.attack_profile = attack_profile
-        
-        # Calculate size based on size_str (fixed pixel values)
         self.width = self.SIZE_MAP[self.size_str]
         self.height = self.SIZE_MAP[self.size_str]
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
         self.id = next(creature_id_counter)
-        
-        # Knockback attributes
         self.knockback_dx = 0
         self.knockback_dy = 0
-        self.knockback_friction = 0.85  # Knockback decay rate
+        self.knockback_friction = 0.85
         self.knockback_resistance = self.SIZE_RESISTANCE[self.size_str]
-        
-        # Initialize any status effects
         self.burning_effects = {}
         self.poison_stacks = []
         self.slow_duration = 0
         self.slow_factor = 1.0
         self.base_speed = speed
-        self.facing = facing  # Default facing direction
-        self.base_image_direction = base_image_direction  # Direction the provided images face
-        self.animation_state = 'walk'  # Default animation state
+        self.facing = facing
+        self.animation_state = 'walk'
         self.images = {}
         self.meshes = {}
-        self.hurt_time = None  # When the creature was last hurt
-        self.hurt_duration = 500  # milliseconds
+        self.hurt_time = None
+        self.hurt_duration = 500
+        self.attack_type = attack_type
+        self.action_fx = action_fx
+        # self.weapon = weapon  # (future use)
         if image_files:
             self.load_and_prepare_images(image_files)
 
     def load_and_prepare_images(self, image_files):
         asset_dir = os.path.join(os.path.dirname(__file__), '..', 'assets')
-        required_states = ['walk', 'attack', 'hurt']
-        optional_states = ['secondary_attack', 'tertiary_attack']
-        # Check for required images
-        for state in required_states:
+        for state in ['walk', 'hurt']:
             if state not in image_files:
                 raise FileNotFoundError(f"Required image for state '{state}' not found in image_files!")
-        # Load all images
-        for state in required_states + optional_states:
-            if state in image_files:
-                filename = image_files[state]
-                path = os.path.join(asset_dir, filename)
-                img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.smoothscale(img, (self.width, self.height))
-                # Store the base direction
-                self.images[f'{state}_{self.base_image_direction}'] = img
-                self.meshes[f'{state}_{self.base_image_direction}'] = pygame.mask.from_surface(img)
-                # Flip for the opposite direction
-                opposite = 'left' if self.base_image_direction == 'right' else 'right'
-                flipped_img = pygame.transform.flip(img, True, False)
-                self.images[f'{state}_{opposite}'] = flipped_img
-                self.meshes[f'{state}_{opposite}'] = pygame.mask.from_surface(flipped_img)
+            filename, orientation = image_files[state]
+            path = os.path.join(asset_dir, filename)
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.smoothscale(img, (self.width, self.height))
+            # Store the base direction
+            self.images[f'{state}_{orientation.value}'] = img
+            self.meshes[f'{state}_{orientation.value}'] = pygame.mask.from_surface(img)
+            # Flip for the opposite direction
+            opposite = 'left' if orientation == Orientation.RIGHT else 'right'
+            flipped_img = pygame.transform.flip(img, True, False)
+            self.images[f'{state}_{opposite}'] = flipped_img
+            self.meshes[f'{state}_{opposite}'] = pygame.mask.from_surface(flipped_img)
 
     def set_animation_state(self, state):
         if f'{state}_left' in self.images or f'{state}_right' in self.images:
@@ -181,14 +180,10 @@ class Creature:
         pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
 class ZombieCat(Creature):
-    def __init__(self, x, y, facing='right', base_image_direction='right'):
+    def __init__(self, x, y, facing='right'):
         image_files = {
-            'walk': 'creatures/zombie_cat/walk.png',
-            'attack': 'creatures/zombie_cat/attack.png',
-            'hurt': 'creatures/zombie_cat/hurt.png',
-            # Optionally:
-            # 'secondary_attack': 'creatures/zombie_cat/secondary_attack.png',
-            # 'tertiary_attack': 'creatures/zombie_cat/tertiary_attack.png',
+            'walk': ('creatures/zombie_cat/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/zombie_cat/hurt.png', Orientation.RIGHT)
         }
         super().__init__(
             x=x,
@@ -201,8 +196,10 @@ class ZombieCat(Creature):
             attack_profile=MeleeCollisionAttack(cooldown=1000),
             color=(100, 200, 100),
             image_files=image_files,
-            facing=facing,
-            base_image_direction=base_image_direction
+            attack_type='melee',
+            action_fx='cleave',
+            # weapon=None,  # (future use)
+            facing=facing
         )
         self.original_color = self.color
 
