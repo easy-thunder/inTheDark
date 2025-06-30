@@ -13,6 +13,20 @@ class Orientation(Enum):
     LEFT = 'left'
     RIGHT = 'right'
 
+class MELEE_ACTION_FX(Enum):
+    CLEAVE = 'cleave'
+    SLASH = 'slash'
+    PUNCH = 'punch'
+    BITE = 'bite'
+    STAB = 'stab'
+
+class RANGED_ACTION_FX(Enum):
+    FIREBALL = 'fireball'
+    LASER = 'laser'
+    ARROW = 'arrow'
+    THROW = 'throw'
+    BLAST = 'blast'
+
 class Creature:
     """A flexible class for any non-player character in the game."""
     # Fixed pixel sizes for each creature category
@@ -38,8 +52,12 @@ class Creature:
     def __init__(
         self, x, y, size_str, hp, damage, speed, movement_profile, attack_profile, color=(0,255,0),
         image_files=None,  # {'walk': (filepath, orientation), 'hurt': (filepath, orientation)}
-        attack_type='melee',
-        action_fx='cleave',
+        action_type=None,  # 'melee' or 'ranged' (optional)
+        action_fx=None,    # MELEE_ACTION_FX or RANGED_ACTION_FX enum value
+        ability1=None,     # Optional ability 1
+        ability2=None,     # Optional ability 2
+        ability3=None,     # Optional ability 3
+        ability_fx=None,   # Optional ability effect
         # weapon=None,  # (future use)
         facing='right'
     ):
@@ -47,7 +65,7 @@ class Creature:
         self.y = float(y)
         self.size_str = size_str
         self.hp = hp
-        self.max_hp = hp  # Add max_hp attribute
+        self.max_hp = hp
         self.damage = damage
         self.speed = speed
         self.color = color
@@ -72,8 +90,19 @@ class Creature:
         self.meshes = {}
         self.hurt_time = None
         self.hurt_duration = 500
-        self.attack_type = attack_type
+        self.attack_type = 'contact'  # All creatures have contact damage
+        self.action_type = action_type
         self.action_fx = action_fx
+        self.ability1 = ability1
+        self.ability2 = ability2
+        self.ability3 = ability3
+        self.ability_fx = ability_fx
+        self.cleave_cooldown = 2000  # milliseconds
+        self.last_cleave_time = 0
+        self.cleave_range = 60  # pixels
+        self.cleave_duration = 300  # milliseconds
+        self.cleave_start_time = None
+        self.is_cleaving = False
         # self.weapon = weapon  # (future use)
         if image_files:
             self.load_and_prepare_images(image_files)
@@ -95,6 +124,19 @@ class Creature:
             flipped_img = pygame.transform.flip(img, True, False)
             self.images[f'{state}_{opposite}'] = flipped_img
             self.meshes[f'{state}_{opposite}'] = pygame.mask.from_surface(flipped_img)
+        
+        # Load action effect image if action_type is specified
+        if self.action_type and self.action_fx:
+            action_path = os.path.join(asset_dir, 'action_fx', f'{self.action_fx.value}.png')
+            if os.path.exists(action_path):
+                action_img = pygame.image.load(action_path).convert_alpha()
+                action_img = pygame.transform.smoothscale(action_img, (self.cleave_range * 2, self.cleave_range * 2))
+                self.action_image = action_img
+            else:
+                # Create a simple effect if image doesn't exist
+                self.action_image = pygame.Surface((self.cleave_range * 2, self.cleave_range * 2), pygame.SRCALPHA)
+                color = (255, 0, 0, 128) if self.action_type == 'melee' else (0, 0, 255, 128)
+                pygame.draw.circle(self.action_image, color, (self.cleave_range, self.cleave_range), self.cleave_range)
 
     def set_animation_state(self, state):
         if f'{state}_left' in self.images or f'{state}_right' in self.images:
@@ -118,6 +160,41 @@ class Creature:
         self.hp -= amount
         self.set_animation_state('hurt')
         self.hurt_time = pygame.time.get_ticks()
+
+    def perform_action_attack(self, players):
+        if not self.action_type or not self.action_fx:
+            return
+            
+        now = pygame.time.get_ticks()
+        if now - self.last_cleave_time < self.cleave_cooldown:
+            return
+            
+        # Find nearest player
+        nearest_player = None
+        min_dist = float('inf')
+        for player in players:
+            if not player.dead:
+                dist = math.hypot(player.rect.centerx - self.rect.centerx, player.rect.centery - self.rect.centery)
+                if dist < min_dist:
+                    min_dist = dist
+                    nearest_player = player
+        
+        if nearest_player and min_dist <= self.cleave_range * 2:
+            # Start action attack
+            self.is_cleaving = True
+            self.cleave_start_time = now
+            self.last_cleave_time = now
+            # Calculate angle to player for cleave effect
+            dx = nearest_player.rect.centerx - self.rect.centerx
+            dy = nearest_player.rect.centery - self.rect.centery
+            self.cleave_angle = math.degrees(math.atan2(dy, dx))
+            # Simple attack area check (semi-circle in facing direction)
+            if self.facing == 'right' and dx > 0 and abs(dy) < self.cleave_range:
+                if hasattr(nearest_player, 'take_damage'):
+                    nearest_player.take_damage(self.damage)
+            elif self.facing == 'left' and dx < 0 and abs(dy) < self.cleave_range:
+                if hasattr(nearest_player, 'take_damage'):
+                    nearest_player.take_damage(self.damage)
 
     def update(self, dt, walls, players):
         # Handle knockback movement first
@@ -145,19 +222,33 @@ class Creature:
                     self.knockback_dy *= -0.5
             self.knockback_dx *= self.knockback_friction
             self.knockback_dy *= self.knockback_friction
+        
         # Update slow effect
         if self.slow_duration > 0:
             self.slow_duration -= dt * 1000
             if self.slow_duration <= 0:
                 self.slow_factor = 1.0
                 self.color = self.original_color if hasattr(self, 'original_color') else self.color
+        
         # Continue with normal movement using modified speed
         current_speed = self.speed * self.slow_factor
         if self.movement_profile:
             self.movement_profile.move(self, players)
-        if self.attack_profile:
+        
+        # Handle action attacks (melee/ranged)
+        if self.action_type:
+            self.perform_action_attack(players)
+        elif self.attack_profile:
             self.attack_profile.execute(self, players)
+        
         self.rect.topleft = (self.x, self.y)
+        
+        # Handle cleave animation
+        if self.is_cleaving and self.cleave_start_time:
+            if pygame.time.get_ticks() - self.cleave_start_time > self.cleave_duration:
+                self.is_cleaving = False
+                self.cleave_start_time = None
+        
         # Handle hurt animation state
         if self.animation_state == 'hurt' and self.hurt_time is not None:
             if pygame.time.get_ticks() - self.hurt_time > self.hurt_duration:
@@ -167,6 +258,13 @@ class Creature:
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
         screen_x = self.rect.x - camera_x + game_x
         screen_y = self.rect.y - camera_y + game_y
+        # Draw action effect if active
+        if self.is_cleaving and hasattr(self, 'action_image'):
+            angle = getattr(self, 'cleave_angle', 0)
+            rotated_img = pygame.transform.rotate(self.action_image, -angle - 110)
+            rect = rotated_img.get_rect(center=(screen_x + self.rect.width // 2, screen_y + self.rect.height // 2))
+            surface.blit(rotated_img, rect.topleft)
+        # Draw creature
         image = self.get_current_image()
         if image:
             surface.blit(image, (screen_x, screen_y))
@@ -196,8 +294,12 @@ class ZombieCat(Creature):
             attack_profile=MeleeCollisionAttack(cooldown=1000),
             color=(100, 200, 100),
             image_files=image_files,
-            attack_type='melee',
-            action_fx='cleave',
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx=None,
             # weapon=None,  # (future use)
             facing=facing
         )
