@@ -33,7 +33,7 @@ class Creature:
     SIZE_MAP = {
         'tiny': 12,      # Very small creatures (rats, insects)
         'small': 24,     # Small creatures (cats, dogs)
-        'medium': 32,    # Medium creatures (humans, zombies)
+        'medium': 36,    # Medium creatures (humans, zombies)
         'large': 48,     # Large creatures (bears, ogres)
         'xlarge': 64,    # Extra large creatures (elephants, giants)
         'gigantic': 96   # Boss-sized creatures
@@ -103,7 +103,7 @@ class Creature:
         self.ability_fx3 = ability_fx3
         self.cleave_cooldown = 2000  # milliseconds
         self.last_cleave_time = 0
-        self.cleave_range = 60  # pixels
+        self.cleave_range = max(24, int(self.width * 0.75))  # scale cleave with creature size
         self.cleave_duration = 300  # milliseconds
         self.cleave_start_time = None
         self.is_cleaving = False
@@ -258,27 +258,40 @@ class Creature:
             if pygame.time.get_ticks() - self.hurt_time > self.hurt_duration:
                 self.set_animation_state('walk')
                 self.hurt_time = None
+        
+        # --- New: Update facing based on nearest player (for subclasses that want it) ---
+        if hasattr(self, 'update_facing_nearest_player') and callable(self.update_facing_nearest_player):
+            self.update_facing_nearest_player(players)
+        elif getattr(self, 'auto_face_nearest_player', False):
+            nearest_player = None
+            min_dist = float('inf')
+            for player in players:
+                if not player.dead:
+                    dist = math.hypot(player.rect.centerx - self.rect.centerx, player.rect.centery - self.rect.centery)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_player = player
+            if nearest_player:
+                dx = nearest_player.rect.centerx - self.rect.centerx
+                self.facing = 'right' if dx > 0 else 'left'
 
     def draw(self, surface, camera_x, camera_y, game_x, game_y):
         screen_x = self.rect.x - camera_x + game_x
         screen_y = self.rect.y - camera_y + game_y
-        # Draw action effect if active
+        # Draw cleave effect if active
         if self.is_cleaving and hasattr(self, 'action_image'):
             angle = getattr(self, 'cleave_angle', 0)
             rotated_img = pygame.transform.rotate(self.action_image, -angle - 110)
             rect = rotated_img.get_rect(center=(screen_x + self.rect.width // 2, screen_y + self.rect.height // 2))
             surface.blit(rotated_img, rect.topleft)
-        # Draw creature
-        image = self.get_current_image()
-        if image:
-            surface.blit(image, (screen_x, screen_y))
-        else:
-            pygame.draw.rect(surface, self.color, (screen_x, screen_y, self.rect.width, self.rect.height))
+        img = self.get_current_image()
+        if img:
+            surface.blit(img, (screen_x, screen_y))
         # Draw HP bar
-        hp_bar_width = self.rect.width
+        hp_bar_width = self.width
         hp_bar_height = 4
         hp_ratio = max(0, self.hp / self.max_hp)
-        pygame.draw.rect(surface, (255, 0, 0), (screen_x, screen_y - 6, hp_bar_width, hp_bar_height))
+        pygame.draw.rect(surface, (60, 60, 60), (screen_x, screen_y - 6, hp_bar_width, hp_bar_height))
         pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
 class ZombieCat(Creature):
@@ -309,21 +322,8 @@ class ZombieCat(Creature):
             facing=facing
         )
         self.original_color = self.color
-
-    def update(self, dt, walls, players):
-        super().update(dt, walls, players)
-        # Find nearest player for movement direction
-        nearest_player = None
-        min_dist = float('inf')
-        for player in players:
-            if not player.dead:
-                dist = math.hypot(player.rect.centerx - self.rect.centerx, player.rect.centery - self.rect.centery)
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest_player = player
-        if nearest_player:
-            dx = nearest_player.rect.centerx - self.rect.centerx
-            self.facing = 'right' if dx > 0 else 'left'
+        self.auto_face_nearest_player = True
+        self.difficulty = 1
 
 class ToughZombieCat(Creature):
     def __init__(self, x, y):
@@ -387,6 +387,97 @@ class ThornyVenomThistle(Creature):
         pygame.draw.rect(surface, (255, 0, 0), (screen_x, screen_y - 6, hp_bar_width, hp_bar_height))
         pygame.draw.rect(surface, (0, 255, 0), (screen_x, screen_y - 6, hp_bar_width * hp_ratio, hp_bar_height))
 
+class ZombieDog(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/zombie_dog/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/zombie_dog/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='medium',  # one size bigger than cat
+            hp=60,  # double HP
+            damage=10,  # more damage
+            speed=3,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            # weapon=None,  # (future use)
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 1
+
+class ZombieFemale(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/zombie_female/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/zombie_female/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='medium',
+            hp=40,
+            damage=8,
+            speed=2.5,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 2
+
+class ZombieMale(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/zombie_male/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/zombie_male/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='medium',
+            hp=40,
+            damage=8,
+            speed=2.5,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 2
+
 # --- Creature Factory Functions ---
 
 def create_zombie_cat(x, y):
@@ -396,4 +487,18 @@ def create_tough_zombie_cat(x, y):
     return ToughZombieCat(x, y)
 
 def create_thorny_venom_thistle(x, y):
-    return ThornyVenomThistle(x, y) 
+    return ThornyVenomThistle(x, y)
+
+# --- Creature Difficulty Pools ---
+# Each pool is a list of (factory_function, kwargs) tuples
+CREATURE_DIFFICULTY_POOLS = [
+    [
+        (ZombieCat, {}),
+        (ZombieDog, {}),
+    ],
+    [
+        (ZombieFemale, {}),
+        (ZombieMale, {}),
+    ],
+    # Add higher difficulty pools as new lists
+] 
