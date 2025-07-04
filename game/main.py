@@ -106,7 +106,7 @@ def main():
                 if math.hypot(x - px, y - py) >= min_spawn_distance:
                     # Use pool 0 for the first minute, then pool 1 after
                     pool_index = 0 if minutes < 1 else 1
-                    pool = CREATURE_DIFFICULTY_POOLS[1]
+                    pool = CREATURE_DIFFICULTY_POOLS[3]
                     creature_class, kwargs = random.choice(pool)
                     creatures.append(creature_class(x=x, y=y, **kwargs))
                     break

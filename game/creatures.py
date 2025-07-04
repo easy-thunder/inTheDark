@@ -478,6 +478,126 @@ class ZombieMale(Creature):
         self.auto_face_nearest_player = True
         self.difficulty = 2
 
+class NecroBat(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/necro_bat/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/necro_bat/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='small',
+            hp=20,
+            damage=6,
+            speed=4,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 2
+
+class NecroMountainLion(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/necro_mountain_lion/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/necro_mountain_lion/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='large',
+            hp=100,
+            damage=20,
+            speed=3.5,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 3
+
+class NecroApe(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/necro_ape/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/necro_ape/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='large',
+            hp=100,
+            damage=20,
+            speed=3.5,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 3
+
+class CyberEnhancedZombie(Creature):
+    def __init__(self, x, y, facing='right'):
+        image_files = {
+            'walk': ('creatures/cyber_enhanced_zombie/walk.png', Orientation.RIGHT),
+            'hurt': ('creatures/cyber_enhanced_zombie/hurt.png', Orientation.RIGHT)
+        }
+        super().__init__(
+            x=x,
+            y=y,
+            size_str='xlarge',
+            hp=200,
+            damage=35,
+            speed=4,
+            movement_profile=DirectApproach(),
+            attack_profile=MeleeCollisionAttack(cooldown=1000),
+            image_files=image_files,
+            action_type='melee',
+            action_fx=MELEE_ACTION_FX.CLEAVE,
+            ability1=None,
+            ability2=None,
+            ability3=None,
+            ability_fx1=None,
+            ability_fx2=None,
+            ability_fx3=None,
+            facing=facing
+        )
+        self.original_color = self.color
+        self.auto_face_nearest_player = True
+        self.difficulty = 4
+
 # --- Creature Factory Functions ---
 
 def create_zombie_cat(x, y):
@@ -499,6 +619,14 @@ CREATURE_DIFFICULTY_POOLS = [
     [
         (ZombieFemale, {}),
         (ZombieMale, {}),
+        (NecroBat, {}),
+    ],
+    [
+        (NecroMountainLion, {}),
+        (NecroApe, {}),
+    ],
+    [
+        (CyberEnhancedZombie, {}),
     ],
     # Add higher difficulty pools as new lists
 ] 
