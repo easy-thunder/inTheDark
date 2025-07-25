@@ -72,6 +72,9 @@ class UncommonStats:
     homing_angle: Optional[float] = None
     homing_time: Optional[float] = None
     knockback_force: Optional[float] = None  # Force of knockback when applicable
+    is_mine: bool = False  # Add this field for mine abilities
+    trigger_radius: Optional[float] = None  # For mine proximity
+    ap_cost: Optional[int] = None  # AP cost for ability
 
 @dataclass
 class UniqueStats:
@@ -80,10 +83,11 @@ class UniqueStats:
     # Add more unique traits as needed
 
 class Weapon:
-    def __init__(self, common: CommonStats, uncommon: Optional[UncommonStats] = None, unique: Optional[UniqueStats] = None):
+    def __init__(self, common: CommonStats, uncommon: Optional[UncommonStats] = None, unique: Optional[UniqueStats] = None, is_ability: bool = False):
         self.common = common
         self.uncommon = uncommon or UncommonStats()
         self.unique = unique or UniqueStats()
+        self.is_ability = is_ability  # Add this field
         # State
         self.current_clip = common.clip_size
         self.is_reloading = False
@@ -781,3 +785,30 @@ def create_combo_gun():
         knockback_force=15.0  # Moderate knockback
     )
     return Weapon(common, uncommon) 
+
+def create_mine_ability():
+    common = CommonStats(
+        name="Proximity Mine",
+        accuracy=0,
+        range=100,  # Not thrown
+        damage=40,
+        fire_rate=1,
+        fire_mode=FireMode.SINGLE,  # Treated as single-use
+        clip_size=1,
+        reload_speed=0,
+        bullet_size=0.4,
+        bullet_color=(100, 255, 100),
+        bullet_speed=0,  # Stationary
+        ammo=None,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.EXPLODE,
+        enemy_effects=[EnemyContactEffect.PHYSICAL]
+    )
+    uncommon = UncommonStats(
+        is_mine=True,
+        trigger_radius=32,  # pixels
+        ap_cost=10,
+        splash=2.0  # Area of effect for explosion (in tiles)
+    )
+    return Weapon(common, uncommon, is_ability=True) 

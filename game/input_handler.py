@@ -1,6 +1,6 @@
 import pygame
 
-def handle_events(players, player_weapon_indices, show_creature_hp):
+def handle_events(players, player_weapon_indices, show_creature_hp, ability_active):
     """
     Handle all pygame events.
     
@@ -72,6 +72,10 @@ def handle_events(players, player_weapon_indices, show_creature_hp):
             elif event.key == pygame.K_r:
                 for player in players:
                     player.reload_weapon(player_weapon_indices[players.index(player)])
+            # --- Ability activation ---
+            elif event.key == pygame.K_f:
+                if ability_active is not None:
+                    ability_active[0] = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # Left click
                 # No firing logic here - handled in main loop

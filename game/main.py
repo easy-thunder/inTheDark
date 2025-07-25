@@ -74,14 +74,18 @@ def main():
     show_creature_hp = False
     splash_effects = []
     current_max_distance = 0
+    # Before the main loop, define ability_active
+    ability_active = [False]
     while running:
         # --- Handle Events ---
-        running, show_creature_hp, player_weapon_indices = handle_events(players, player_weapon_indices, show_creature_hp)
+        running, show_creature_hp, player_weapon_indices = handle_events(players, player_weapon_indices, show_creature_hp, ability_active)
         if not running:
             break
         dx1, dy1, dx2, dy2 = get_player_movement(players)
         # --- Handle Firing ---
-        if is_fire_pressed():
+        if ability_active[0]:
+            bullets = handle_firing(players, player_weapon_indices, bullets, 0, TILE_SIZE, camera_x, camera_y, ability_active)
+        elif is_fire_pressed():
             player = players[0]
             weapon = player.character.weapons[player_weapon_indices[0]]
             now = pygame.time.get_ticks()

@@ -3,7 +3,7 @@ import math
 import random
 from game.weapons import FireMode, ContactEffect, EnemyContactEffect
 
-def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0):
+def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0, ability_active=None):
     """
     Handle automatic firing for the specified player.
     
@@ -15,6 +15,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         tile_size: Size of tiles in pixels
         camera_x: X coordinate of the camera
         camera_y: Y coordinate of the camera
+        ability_active: List to track if an ability weapon (e.g., mine) is active
     
     Returns:
         Updated bullets list
@@ -25,6 +26,21 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
     
     weapon = player.character.weapons[player_weapon_indices[current_player_index]]
     now = pygame.time.get_ticks()
+
+    # --- Ability weapon firing (e.g., mine) ---
+    if getattr(weapon, 'is_ability', False) and ability_active is not None and ability_active[0]:
+        ap_cost = getattr(weapon.uncommon, 'ap_cost', 0)
+        if player.ability_points >= ap_cost:
+            player.ability_points -= ap_cost
+            # Create mine bullet at player location
+            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullet['is_mine'] = True
+            bullet['trigger_radius'] = getattr(weapon.uncommon, 'trigger_radius', 32)
+            bullet['splash'] = getattr(weapon.uncommon, 'splash', 2.0)
+            bullets.append(bullet)
+        # Reset ability_active so only one mine per press
+        ability_active[0] = False
+        return bullets
     
     # Handle warm-up time
     if weapon.uncommon.warm_up_time and not weapon.is_warming_up:
@@ -306,6 +322,31 @@ def update_bullets(bullets, creatures, walls, dt, camera_x=0, camera_y=0):
     splash_effects = []  # Initialize splash_effects list
     
     for bullet in bullets[:]:
+        # --- MINE LOGIC ---
+        if getattr(bullet, 'is_mine', False) or bullet.get('is_mine', False):
+            # Mines do not move and do not disappear due to range
+            # Check for proximity to any creature
+            triggered = False
+            trigger_radius = bullet.get('trigger_radius', 32)
+            for creature in creatures:
+                if creature.hp > 0:
+                    dist = math.hypot(bullet['x'] - creature.rect.centerx, bullet['y'] - creature.rect.centery)
+                    if dist <= trigger_radius:
+                        # Explode: deal splash damage to all creatures in splash radius
+                        splash_radius = (bullet.get('splash', 2.0) * 32)  # Default 2 tiles
+                        for c in creatures:
+                            if c.hp > 0:
+                                cdist = math.hypot(bullet['x'] - c.rect.centerx, bullet['y'] - c.rect.centery)
+                                if cdist <= splash_radius:
+                                    c.hp -= bullet['damage']
+                        bullets_to_remove.append(bullet)
+                        triggered = True
+                        break
+            if triggered:
+                continue  # Skip further processing for this bullet
+            # Draw mine (optional: add visual effect here)
+            continue  # Skip normal bullet logic for mines
+            
         if bullet.get('type') == 'beam':
             # Store previous position for robust collision detection
             prev_x, prev_y = bullet['x'], bullet['y']

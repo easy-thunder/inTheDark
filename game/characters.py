@@ -37,7 +37,8 @@ from game.weapons import (
     WeaponSpecialization,
 
     create_knockback_gun,
-    create_combo_gun
+    create_combo_gun,
+    create_mine_ability
 )
 
 DEFAULT_SPECIALIZATIONS = {
@@ -84,8 +85,7 @@ TESTY = Character(
         create_grenade(),
         create_piercing_laser_smg(),
         create_gatling_freezer(),
-        create_ricochet_pistol(),
-
+        create_mine_ability()
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 1,
@@ -96,10 +96,5 @@ TESTY = Character(
 
 def create_testy():
     """Create the TESTY character for testing weapons."""
-    weapons = [
-        create_knockback_gun(),  # Test knockback alone
-        create_combo_gun(),      # Test combined effects
-        create_shotgun(),
-        # ... rest of weapons commented out for testing ...
-    ]
+
     return Character("TESTY", "The Weapon Tester", weapons=weapons) 
