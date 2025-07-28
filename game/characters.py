@@ -51,7 +51,7 @@ DEFAULT_SPECIALIZATIONS = {
 }
 
 class Character:
-    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0, revival_time=5, weapons=None, specializations=None):
+    def __init__(self, name, max_hp, speed, ability_points, armor=0, hp_regen=0, ap_regen=0, revival_time=5, weapons=None, abilities=None, specializations=None):
         self.name = name
         self.max_hp = max_hp
         self.speed = speed
@@ -61,6 +61,7 @@ class Character:
         self.ap_regen = ap_regen
         self.revival_time = revival_time
         self.weapons = weapons or []
+        self.abilities = abilities or []
         # Always set specializations
         self.specializations = dict(DEFAULT_SPECIALIZATIONS)
         if specializations:
@@ -78,13 +79,14 @@ TESTY = Character(
     revival_time=5,
     weapons=[
         # --- Standard Weapons ---
-
         # --- New Batch: Toggle below ---
         create_serpents_breath(),
         create_solar_death_beam(),
         create_grenade(),
         create_piercing_laser_smg(),
         create_gatling_freezer(),
+    ],
+    abilities=[
         create_mine_ability()
     ],
     specializations={

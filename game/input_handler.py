@@ -1,6 +1,6 @@
 import pygame
 
-def handle_events(players, player_weapon_indices, show_creature_hp, ability_active):
+def handle_events(players, player_weapon_indices, show_creature_hp, ability_active, player_ability_indices, caps_lock_on):
     """
     Handle all pygame events.
     
@@ -15,56 +15,17 @@ def handle_events(players, player_weapon_indices, show_creature_hp, ability_acti
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
+            if event.key == pygame.K_CAPSLOCK:
+                caps_lock_on[0] = not caps_lock_on[0]
             # --- Weapon switching ---
-            elif event.key == pygame.K_1:
-                if len(players[0].character.weapons) > 0:
-                    # Cancel reload on current weapon
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 0
-            elif event.key == pygame.K_2:
-                if len(players[0].character.weapons) > 1:
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 1
-            elif event.key == pygame.K_3:
-                if len(players[0].character.weapons) > 2:
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 2
-            elif event.key == pygame.K_4:
-                if len(players[0].character.weapons) > 3:
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 3
-            elif event.key == pygame.K_5:
-                if len(players[0].character.weapons) > 4:
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 4
-            elif event.key == pygame.K_6:
-                if len(players[0].character.weapons) > 5:
-                    current_index = player_weapon_indices[0]
-                    current_weapon = players[0].character.weapons[current_index]
-                    current_weapon.is_reloading = False
-                    if hasattr(current_weapon, 'reload_start'):
-                        current_weapon.reload_start = None
-                    player_weapon_indices[0] = 5
+            elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]:
+                idx = event.key - pygame.K_1
+                if caps_lock_on[0]:
+                    if len(players[0].character.abilities) > idx:
+                        player_ability_indices[0] = idx
+                else:
+                    if len(players[0].character.weapons) > idx:
+                        player_weapon_indices[0] = idx
             # --- Toggle creature HP bars ---
             elif event.key == pygame.K_h:
                 show_creature_hp = not show_creature_hp
@@ -89,7 +50,7 @@ def handle_events(players, player_weapon_indices, show_creature_hp, ability_acti
                             weapon.is_warming_up = False
                             weapon.warm_up_start = None
     
-    return running, show_creature_hp, player_weapon_indices
+    return running, show_creature_hp, player_weapon_indices, player_ability_indices, caps_lock_on
 
 def get_player_movement(players):
     """

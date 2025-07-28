@@ -61,6 +61,8 @@ def main():
         Player(player_start_pos[0], player_start_pos[1], copy.deepcopy(TESTY), TILE_SIZE),
     ]
     player_weapon_indices = [0, 0]
+    player_ability_indices = [0, 0]
+    caps_lock_on = [False]
     creatures = []
     # Remove initial spawns
     # --- Dynamic Enemy Spawning ---
@@ -78,13 +80,15 @@ def main():
     ability_active = [False]
     while running:
         # --- Handle Events ---
-        running, show_creature_hp, player_weapon_indices = handle_events(players, player_weapon_indices, show_creature_hp, ability_active)
+        running, show_creature_hp, player_weapon_indices, player_ability_indices, caps_lock_on = handle_events(
+            players, player_weapon_indices, show_creature_hp, ability_active, player_ability_indices, caps_lock_on
+        )
         if not running:
             break
         dx1, dy1, dx2, dy2 = get_player_movement(players)
         # --- Handle Firing ---
         if ability_active[0]:
-            bullets = handle_firing(players, player_weapon_indices, bullets, 0, TILE_SIZE, camera_x, camera_y, ability_active)
+            bullets = handle_firing(players, player_ability_indices, bullets, 0, TILE_SIZE, camera_x, camera_y, ability_active, is_ability=True)
         elif is_fire_pressed():
             player = players[0]
             weapon = player.character.weapons[player_weapon_indices[0]]

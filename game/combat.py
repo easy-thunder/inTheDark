@@ -3,29 +3,36 @@ import math
 import random
 from game.weapons import FireMode, ContactEffect, EnemyContactEffect
 
-def handle_firing(players, player_weapon_indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0, ability_active=None):
+def handle_firing(players, indices, bullets, current_player_index=0, tile_size=32, camera_x=0, camera_y=0, ability_active=None, is_ability=False):
     """
-    Handle automatic firing for the specified player.
-    
-    Args:
-        players: List of Player objects
-        player_weapon_indices: List of weapon indices for each player
-        bullets: List of active bullets
-        current_player_index: Index of the player to handle firing for (default 0)
-        tile_size: Size of tiles in pixels
-        camera_x: X coordinate of the camera
-        camera_y: Y coordinate of the camera
-        ability_active: List to track if an ability weapon (e.g., mine) is active
-    
-    Returns:
-        Updated bullets list
+    Handle firing for weapons or abilities depending on is_ability flag.
     """
     player = players[current_player_index]
     if player.dead:
         return bullets
     
-    weapon = player.character.weapons[player_weapon_indices[current_player_index]]
-    now = pygame.time.get_ticks()
+    if is_ability:
+        ability_index = indices[current_player_index]
+        ability = player.character.abilities[ability_index]
+        now = pygame.time.get_ticks()
+        if getattr(ability, 'is_ability', False) and ability_active is not None and ability_active[0]:
+            ap_cost = getattr(ability.uncommon, 'ap_cost', 0)
+            if player.ability_points >= ap_cost:
+                player.ability_points -= ap_cost
+                # Create mine bullet at player location
+                bullet = create_bullet(player, ability, ability_index, tile_size, camera_x, camera_y)
+                bullet['is_mine'] = True
+                bullet['trigger_radius'] = getattr(ability.uncommon, 'trigger_radius', 32)
+                bullet['splash'] = getattr(ability.uncommon, 'splash', 2.0)
+                bullets.append(bullet)
+            # Reset ability_active so only one mine per press
+            ability_active[0] = False
+            return bullets
+        return bullets
+    else:
+        weapon_index = indices[current_player_index]
+        weapon = player.character.weapons[weapon_index]
+        now = pygame.time.get_ticks()
 
     # --- Ability weapon firing (e.g., mine) ---
     if getattr(weapon, 'is_ability', False) and ability_active is not None and ability_active[0]:
@@ -33,7 +40,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         if player.ability_points >= ap_cost:
             player.ability_points -= ap_cost
             # Create mine bullet at player location
-            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y)
             bullet['is_mine'] = True
             bullet['trigger_radius'] = getattr(weapon.uncommon, 'trigger_radius', 32)
             bullet['splash'] = getattr(weapon.uncommon, 'splash', 2.0)
@@ -59,7 +66,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         # Create bullet(s)
         if weapon.common.fire_mode == FireMode.SHOTGUN:
             for i in range(weapon.uncommon.volley or 1):
-                bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
+                bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y, pellet_index=i)
                 bullets.append(bullet)
         elif weapon.common.fire_mode == FireMode.SPRAY:
             base_angle = math.atan2(player.aim_direction[1], player.aim_direction[0])
@@ -72,7 +79,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
                 dx = player.aim_direction[0] * cos_spread - player.aim_direction[1] * sin_spread
                 dy = player.aim_direction[0] * sin_spread + player.aim_direction[1] * cos_spread
                 speed_variation = random.uniform(0.8, 1.2)
-                bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y, pellet_index=i)
+                bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y, pellet_index=i)
                 bullet['dx'] = dx
                 bullet['dy'] = dy
                 bullet['speed'] = weapon.common.bullet_speed * speed_variation
@@ -81,16 +88,16 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
                 bullet['particle_intensity'] = random.uniform(0.8, 1.2)
                 bullets.append(bullet)
         elif weapon.common.fire_mode == FireMode.ORBITAL:
-            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y)
             bullets.append(bullet)
         elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM:
-            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y)
             bullets.append(bullet)
         elif weapon.common.fire_mode == FireMode.BEAM:
             # Handle beam weapons (lightning-fast piercing beam)
             bullets.append(create_beam(player.rect.centerx, player.rect.centery, math.atan2(player.aim_direction[1], player.aim_direction[0]), weapon))
         else:
-            bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+            bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y)
             bullets.append(bullet)
         
         # Update weapon state
@@ -99,12 +106,12 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         
         # Automatic reload if clip is empty and reserve ammo (or infinite)
         if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.common.ammo is None or weapon.common.ammo > 0)):
-            player.reload_weapon(player_weapon_indices[current_player_index])
+            player.reload_weapon(weapon_index)
     
     # Special case for orbital beam weapons - they can fire even during warm-up
     elif weapon.common.fire_mode == FireMode.ORBITAL_BEAM and weapon.current_clip > 0 and not weapon.is_reloading:
         # Create orbital beam weapon immediately, let bullet handle its own warm-up
-        bullet = create_bullet(player, weapon, player_weapon_indices[current_player_index], tile_size, camera_x, camera_y)
+        bullet = create_bullet(player, weapon, weapon_index, tile_size, camera_x, camera_y)
         bullets.append(bullet)
         
         # Update weapon state
@@ -113,7 +120,7 @@ def handle_firing(players, player_weapon_indices, bullets, current_player_index=
         
         # Automatic reload if clip is empty and reserve ammo (or infinite)
         if weapon.current_clip == 0 and (player.has_infinite_ammo(weapon) or (weapon.common.ammo is None or weapon.common.ammo > 0)):
-            player.reload_weapon(player_weapon_indices[current_player_index])
+            player.reload_weapon(weapon_index)
     
     return bullets
 
