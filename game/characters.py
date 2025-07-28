@@ -38,7 +38,8 @@ from game.weapons import (
 
     create_knockback_gun,
     create_combo_gun,
-    create_mine_ability
+    create_mine_ability,
+    create_nuclear_mine_ability
 )
 
 DEFAULT_SPECIALIZATIONS = {
@@ -87,7 +88,8 @@ TESTY = Character(
         create_gatling_freezer(),
     ],
     abilities=[
-        create_mine_ability()
+        create_mine_ability(),
+        create_nuclear_mine_ability()
     ],
     specializations={
         WeaponSpecialization.EXPLOSIVES: 1,
@@ -99,4 +101,4 @@ TESTY = Character(
 def create_testy():
     """Create the TESTY character for testing weapons."""
 
-    return Character("TESTY", "The Weapon Tester", weapons=weapons) 
+    return Character("TESTY", "The Weapon Tester") 

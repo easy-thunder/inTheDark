@@ -812,3 +812,31 @@ def create_mine_ability():
         splash=2.0  # Area of effect for explosion (in tiles)
     )
     return Weapon(common, uncommon, is_ability=True) 
+
+
+def create_nuclear_mine_ability():
+    common = CommonStats(
+        name="Proximity Mine",
+        accuracy=0,
+        range=100, 
+        damage=500,
+        fire_rate=1,
+        fire_mode=FireMode.SINGLE,  # Treated as single-use
+        clip_size=1,
+        reload_speed=0,
+        bullet_size=0.4,
+        bullet_color=(100, 255, 100),
+        bullet_speed=0,  # Stationary
+        ammo=None,
+        specialization_type=None,
+        specialization_level=1,
+        contact_effect=ContactEffect.EXPLODE,
+        enemy_effects=[EnemyContactEffect.PHYSICAL]
+    )
+    uncommon = UncommonStats(
+        is_mine=True,
+        trigger_radius=32,  # pixels
+        ap_cost=10,
+        splash=10.0  # Area of effect for explosion (in tiles)
+    )
+    return Weapon(common, uncommon, is_ability=True) 

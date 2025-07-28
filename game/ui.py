@@ -2,7 +2,7 @@ import pygame
 import os
 import math
 
-def draw_world(screen, world, camera_x, camera_y, game_x, game_y, tile_size, border_color, menu_color, black):
+def draw_world(screen, world, camera_x, camera_y, game_x, game_y, tile_size, border_color, menu_color, black, darkness_alpha=0):
     """Draw the world tiles and walls."""
     screen.fill(border_color)
     pygame.draw.rect(screen, menu_color, (0, 0, screen.get_width(), 100))  # Top menu area
@@ -25,6 +25,11 @@ def draw_world(screen, world, camera_x, camera_y, game_x, game_y, tile_size, bor
                 draw_rect = rect.move(-camera_x + game_x, -camera_y + game_y)
                 pygame.draw.rect(screen, (128, 128, 128), draw_rect)
     
+
+    if darkness_alpha > 0:
+        darkness_overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+        darkness_overlay.fill((0, 0, 0, darkness_alpha))  # RGBA: black with alpha
+        screen.blit(darkness_overlay, (0, 0))
     return visible_walls
 
 def draw_creatures(screen, creatures, camera_x, camera_y, game_x, game_y, show_creature_hp):

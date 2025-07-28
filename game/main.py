@@ -3,7 +3,7 @@ import sys
 import copy
 import random
 import math
-from game.world import World
+from game.world import World, get_day_phase
 from game.stats.stats import GameStats
 from game.characters import TESTY
 from game.creatures import create_zombie_cat, create_tough_zombie_cat, create_thorny_venom_thistle, CREATURE_DIFFICULTY_POOLS
@@ -12,7 +12,6 @@ from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
 from game.input_handler import handle_events, get_player_movement, is_fire_pressed
 from game.game_logic import update_players, handle_revival, apply_tether_mechanic, update_camera, cleanup_dead_creatures
-
 # Initialize pygame
 pygame.init()
 
@@ -120,7 +119,11 @@ def main():
                     break
             spawn_timer = now
         # --- Draw World ---
-        visible_walls = draw_world(screen, world, camera_x, camera_y, GAME_X, GAME_Y, TILE_SIZE, BORDER_COLOR, MENU_COLOR, BLACK)
+
+        clock.tick(60)
+        current_game_time_seconds = (pygame.time.get_ticks() - start_ticks) / 1000
+        day_phase, darkness_alpha = get_day_phase(current_game_time_seconds)
+        visible_walls = draw_world(screen, world, camera_x, camera_y, GAME_X, GAME_Y, TILE_SIZE, BORDER_COLOR, MENU_COLOR, BLACK,  darkness_alpha)
         all_dead = update_players(players, dx1, dy1, dx2, dy2, visible_walls, camera_x, camera_y, player_weapon_indices, GAME_X, GAME_Y)
         handle_revival(players, clock)
         for i, player in enumerate(players):
@@ -140,8 +143,9 @@ def main():
         current_max_distance = draw_stats_ui(screen, players, player_start_pos, current_max_distance, start_ticks, stats, TILE_SIZE, BORDER_SIZE, TOP_MENU_HEIGHT, WHITE)
         draw_xp_bar(screen, players[0], SCREEN_WIDTH, SCREEN_HEIGHT, BORDER_SIZE)
         pygame.display.flip()
-        clock.tick(60)
-    current_game_time_seconds = (pygame.time.get_ticks() - start_ticks) / 1000
+
+
+
     stats.save_records(current_game_time_seconds, current_max_distance)
     pygame.quit()
     sys.exit()

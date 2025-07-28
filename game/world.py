@@ -31,3 +31,30 @@ class World:
         # Cache the result and return it
         self.tile_cache[(x, y)] = tile_type
         return tile_type 
+    
+
+# WORLD FUNCTIONS
+def get_day_phase(elapsed_time):
+    """
+    Returns the current phase and an optional alpha value for lighting.
+    """
+    cycle_duration = 1200  # 20 minutes in seconds
+    time_in_cycle = elapsed_time % cycle_duration
+
+    if time_in_cycle < 120:
+        phase = "dawn"
+        # Alpha fades from 100 (dark) to 0 (bright)
+        alpha = int(100 * (1 - time_in_cycle / 120))
+    elif time_in_cycle < 600:
+        phase = "day"
+        alpha = 0
+    elif time_in_cycle < 720:
+        phase = "dusk"
+        # Alpha fades from 0 to 100
+        alpha = int(100 * ((time_in_cycle - 600) / 120))
+    else:
+        phase = "night"
+        alpha = 180  # or up to 200 for maximum darkness
+
+    return phase, alpha
+
