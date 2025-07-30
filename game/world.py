@@ -44,17 +44,20 @@ def get_day_phase(elapsed_time):
     if time_in_cycle < 120:
         phase = "dawn"
         # Alpha fades from 100 (dark) to 0 (bright)
-        alpha = int(100 * (1 - time_in_cycle / 120))
+        # alpha = int(100 * (1 - time_in_cycle / 120)) # JAKE RETAIN THIS AFTER TESTING
+        alpha = 220
     elif time_in_cycle < 600:
         phase = "day"
-        alpha = 0
+        # alpha = 0 // JAKE RETAIN THIS AFTER TESTING
+        alpha = 220
     elif time_in_cycle < 720:
         phase = "dusk"
         # Alpha fades from 0 to 100
-        alpha = int(100 * ((time_in_cycle - 600) / 120))
+        # alpha = int(100 * ((time_in_cycle - 600) / 120)) // JAKE RETAIN THIS AFTER TESTING
+        alpha = 220
     else:
         phase = "night"
-        alpha = 180  # or up to 200 for maximum darkness
+        alpha = 220  # or up to 200 for maximum darkness
 
     return phase, alpha
 

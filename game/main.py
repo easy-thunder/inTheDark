@@ -9,7 +9,7 @@ from game.characters import TESTY
 from game.creatures import create_zombie_cat, create_tough_zombie_cat, create_thorny_venom_thistle, CREATURE_DIFFICULTY_POOLS
 from game.combat import handle_firing, reset_warm_up, update_bullets, update_burning_creatures, update_poison_effects
 from game.player import Player
-from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over
+from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over, draw_darkness_overlay
 from game.input_handler import handle_events, get_player_movement, is_fire_pressed
 from game.game_logic import update_players, handle_revival, apply_tether_mechanic, update_camera, cleanup_dead_creatures
 # Initialize pygame
@@ -113,7 +113,7 @@ def main():
                 if math.hypot(x - px, y - py) >= min_spawn_distance:
                     # Use pool 0 for the first minute, then pool 1 after
                     pool_index = 0 if minutes < 1 else 1
-                    pool = CREATURE_DIFFICULTY_POOLS[3]
+                    pool = CREATURE_DIFFICULTY_POOLS[3] # JAKE CHANGE THIS TO POOL_INDEX AFTER TESTING
                     creature_class, kwargs = random.choice(pool)
                     creatures.append(creature_class(x=x, y=y, **kwargs))
                     break
@@ -126,8 +126,7 @@ def main():
         visible_walls = draw_world(screen, world, camera_x, camera_y, GAME_X, GAME_Y, TILE_SIZE, BORDER_COLOR, MENU_COLOR, BLACK,  darkness_alpha)
         all_dead = update_players(players, dx1, dy1, dx2, dy2, visible_walls, camera_x, camera_y, player_weapon_indices, GAME_X, GAME_Y)
         handle_revival(players, clock)
-        for i, player in enumerate(players):
-            player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=player_weapon_indices[i], game_x=GAME_X, game_y=GAME_Y)
+
         for creature in creatures:
             creature.update(1/60, visible_walls, players)
         draw_creatures(screen, creatures, camera_x, camera_y, GAME_X, GAME_Y, show_creature_hp)
@@ -137,6 +136,17 @@ def main():
         update_poison_effects(creatures)
         draw_splash_effects(screen, splash_effects, camera_x, camera_y, GAME_X, GAME_Y)
         draw_bullets(screen, bullets, camera_x, camera_y, GAME_X, GAME_Y)
+        player_screen_x = players[0].rect.centerx - camera_x + GAME_X
+        player_screen_y = players[0].rect.centery - camera_y + GAME_Y
+        player_light = {
+            'x': player_screen_x,
+            'y': player_screen_y,
+            'radius': 340  # Adjust based on desired flashlight size
+        }
+        lights = [player_light]
+        draw_darkness_overlay(screen, darkness_alpha, lights)
+        for i, player in enumerate(players):
+            player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=player_weapon_indices[i], game_x=GAME_X, game_y=GAME_Y)
         if all_dead:
             draw_game_over(screen, SCREEN_WIDTH, SCREEN_HEIGHT)
             break

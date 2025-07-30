@@ -25,11 +25,6 @@ def draw_world(screen, world, camera_x, camera_y, game_x, game_y, tile_size, bor
                 draw_rect = rect.move(-camera_x + game_x, -camera_y + game_y)
                 pygame.draw.rect(screen, (128, 128, 128), draw_rect)
     
-
-    if darkness_alpha > 0:
-        darkness_overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-        darkness_overlay.fill((0, 0, 0, darkness_alpha))  # RGBA: black with alpha
-        screen.blit(darkness_overlay, (0, 0))
     return visible_walls
 
 def draw_creatures(screen, creatures, camera_x, camera_y, game_x, game_y, show_creature_hp):
@@ -379,3 +374,47 @@ def draw_weapon_info(screen, weapon, x, y):
     if weapon.unique.beam_damage_tick:
         tick_text = font.render(f"Beam Tick: {weapon.unique.beam_damage_tick}s", True, (255,255,0))
         screen.blit(tick_text, (x, y+100)) 
+
+
+
+def create_radial_light_surface(radius, darkness_alpha):
+    """
+    Creates a radial gradient light surface once and reuses it.
+    Alpha fades from 0 (transparent) at center to darkness_alpha at edge (opaque).
+    """
+    surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    center = radius
+
+    for r in range(radius, 0, -1):
+        alpha = int(darkness_alpha * (1 - (r / radius)))  # Brighter in center, darker at edge
+        pygame.draw.circle(surface, (0, 0, 0, alpha), (center, center), r)
+
+    return surface
+
+
+
+_light_cache = {}  # Add this at the top of your file (for caching)
+
+def draw_darkness_overlay(screen, darkness_alpha, lights=[]):
+    """
+    Draws a darkness overlay and subtracts cached radial light gradients from the given positions.
+    """
+    if darkness_alpha <= 0:
+        return
+
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, darkness_alpha))
+
+    for light in lights:
+        x, y, radius = light['x'], light['y'], light['radius']
+
+        key = (radius, darkness_alpha)
+        if key not in _light_cache:
+            _light_cache[key] = create_radial_light_surface(radius, darkness_alpha)
+
+        light_surf = _light_cache[key]
+        overlay.blit(light_surf, (x - radius, y - radius), special_flags=pygame.BLEND_RGBA_SUB)
+
+    screen.blit(overlay, (0, 0))
+
+    
