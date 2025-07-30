@@ -386,18 +386,51 @@ def create_radial_light_surface(radius, darkness_alpha):
     center = radius
 
     for r in range(radius, 0, -1):
-        alpha = int(darkness_alpha * (1 - (r / radius)))  # Brighter in center, darker at edge
+        alpha = int(darkness_alpha * (1 - (r / radius)))
         pygame.draw.circle(surface, (0, 0, 0, alpha), (center, center), r)
 
     return surface
 
 
 
-_light_cache = {}  # Add this at the top of your file (for caching)
 
+
+
+
+
+def draw_flashlight_cone(screen, x, y, angle_deg, length, spread_deg, darkness_alpha):
+    """
+    Draws a simple cone-shaped flashlight overlay.
+    - (x, y): Origin of flashlight in screen coordinates
+    - angle_deg: Flashlight direction
+    - length: Distance of beam
+    - spread_deg: Beam width
+    """
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 0))
+
+    angle_rad = math.radians(angle_deg)
+    half_spread = math.radians(spread_deg / 2)
+
+    dx1 = math.cos(angle_rad - half_spread) * length
+    dy1 = math.sin(angle_rad - half_spread) * length
+    dx2 = math.cos(angle_rad + half_spread) * length
+    dy2 = math.sin(angle_rad + half_spread) * length
+
+    points = [
+        (x, y),
+        (x + dx1, y + dy1),
+        (x + dx2, y + dy2),
+    ]
+
+    pygame.draw.polygon(overlay, (0, 0, 0, darkness_alpha), points)
+    screen.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+
+
+_light_cache = {}
 def draw_darkness_overlay(screen, darkness_alpha, lights=[]):
     """
-    Draws a darkness overlay and subtracts cached radial light gradients from the given positions.
+    Draws a darkness overlay and subtracts radial or simple cone lights.
     """
     if darkness_alpha <= 0:
         return
@@ -406,15 +439,23 @@ def draw_darkness_overlay(screen, darkness_alpha, lights=[]):
     overlay.fill((0, 0, 0, darkness_alpha))
 
     for light in lights:
-        x, y, radius = light['x'], light['y'], light['radius']
+        if light['type'] == 'radial':
+            x, y, radius = light['x'], light['y'], light['radius']
+            key = (radius, darkness_alpha)
+            if key not in _light_cache:
+                _light_cache[key] = create_radial_light_surface(radius, darkness_alpha)
+            light_surf = _light_cache[key]
+            overlay.blit(light_surf, (x - radius, y - radius), special_flags=pygame.BLEND_RGBA_SUB)
 
-        key = (radius, darkness_alpha)
-        if key not in _light_cache:
-            _light_cache[key] = create_radial_light_surface(radius, darkness_alpha)
-
-        light_surf = _light_cache[key]
-        overlay.blit(light_surf, (x - radius, y - radius), special_flags=pygame.BLEND_RGBA_SUB)
+        elif light['type'] == 'cone':
+            draw_flashlight_cone(
+                overlay,
+                x=light['x'],
+                y=light['y'],
+                angle_deg=light['angle'],
+                length=light['radius'],
+                spread_deg=light.get('spread', 45),
+                darkness_alpha=darkness_alpha
+            )
 
     screen.blit(overlay, (0, 0))
-
-    

@@ -138,12 +138,14 @@ def main():
         draw_bullets(screen, bullets, camera_x, camera_y, GAME_X, GAME_Y)
         player_screen_x = players[0].rect.centerx - camera_x + GAME_X
         player_screen_y = players[0].rect.centery - camera_y + GAME_Y
-        player_light = {
-            'x': player_screen_x,
-            'y': player_screen_y,
-            'radius': 340  # Adjust based on desired flashlight size
-        }
-        lights = [player_light]
+        aim_dx, aim_dy = players[0].aim_direction # JAKE THIS WILL NEED TO BE CHANGED FOR MULTIPLAYER
+        player_angle = math.degrees(math.atan2(aim_dy, aim_dx))
+
+        lights = [
+                # { 'type': 'radial', 'x': player_screen_x, 'y': player_screen_y, 'radius': 300, 'alpha': darkness_alpha },
+                { 'type': 'cone', 'x': player_screen_x, 'y': player_screen_y, 'radius': 300, 'angle': player_angle, 'spread': 45 }
+
+        ]
         draw_darkness_overlay(screen, darkness_alpha, lights)
         for i, player in enumerate(players):
             player.draw(screen, camera_x, camera_y, player_index=i, current_weapon_index=player_weapon_indices[i], game_x=GAME_X, game_y=GAME_Y)
