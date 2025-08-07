@@ -46,3 +46,16 @@
     d. Alien space crafts
 20. We need an initial story line of our daughter being taken and the ability to find and rescue her.
 
+
+DEPLOYMENT STEP:
+run:
+    pyinstaller run_game.py --onedir --console --add-data "game/assets:game/assets" --noconfirm
+to rebuild deployment from root of project
+run: 
+    ./dist/run_game/run_game
+To test that the deployment worked from the root directory.
+
+for testing development run:
+    python -m game.main
+from the root
+

@@ -2,7 +2,6 @@ import pygame
 from game.ai.movement import DirectApproach
 from game.ai.attacks import MeleeCollisionAttack
 import math
-import random
 import itertools
 import os
 from enum import Enum
@@ -112,7 +111,7 @@ class Creature:
             self.load_and_prepare_images(image_files)
 
     def load_and_prepare_images(self, image_files):
-        asset_dir = os.path.join(os.path.dirname(__file__), '..', 'assets')
+        asset_dir = os.path.join(os.path.dirname(__file__), 'assets')
         for state in ['walk', 'hurt']:
             if state not in image_files:
                 raise FileNotFoundError(f"Required image for state '{state}' not found in image_files!")
