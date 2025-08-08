@@ -60,7 +60,8 @@ class Creature:
         ability_fx2=None,  # Optional ability 2 effect
         ability_fx3=None,  # Optional ability 3 effect
         # weapon=None,  # (future use)
-        facing='right'
+        facing='right',
+        xp_value=10
     ):
         self.x = float(x)
         self.y = float(y)
@@ -68,6 +69,7 @@ class Creature:
         self.hp = hp
         self.max_hp = hp
         self.damage = damage
+        self.xp_value = xp_value
         self.speed = speed
         self.color = color
         self.movement_profile = movement_profile
@@ -106,6 +108,7 @@ class Creature:
         self.cleave_duration = 300  # milliseconds
         self.cleave_start_time = None
         self.is_cleaving = False
+        self.xp_awarded = False
         # self.weapon = weapon  # (future use)
         if image_files:
             self.load_and_prepare_images(image_files)
@@ -318,7 +321,8 @@ class ZombieCat(Creature):
             ability_fx2=None,
             ability_fx3=None,
             # weapon=None,  # (future use)
-            facing=facing
+            facing=facing,
+            xp_value=10
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -411,7 +415,8 @@ class ZombieDog(Creature):
             ability_fx2=None,
             ability_fx3=None,
             # weapon=None,  # (future use)
-            facing=facing
+            facing=facing,
+            xp_value=15,
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -441,7 +446,8 @@ class ZombieFemale(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=20
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -471,7 +477,8 @@ class ZombieMale(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=20,
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -501,7 +508,8 @@ class NecroBat(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=15,
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -531,7 +539,8 @@ class NecroMountainLion(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=30
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -561,7 +570,8 @@ class NecroApe(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=40
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True
@@ -591,7 +601,8 @@ class CyberEnhancedZombie(Creature):
             ability_fx1=None,
             ability_fx2=None,
             ability_fx3=None,
-            facing=facing
+            facing=facing,
+            xp_value=50
         )
         self.original_color = self.color
         self.auto_face_nearest_player = True

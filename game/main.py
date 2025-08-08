@@ -130,7 +130,7 @@ def main():
         for creature in creatures:
             creature.update(1/60, visible_walls, players)
         draw_creatures(screen, creatures, camera_x, camera_y, GAME_X, GAME_Y, show_creature_hp)
-        cleanup_dead_creatures(creatures)
+        cleanup_dead_creatures(creatures, players)
         bullets, splash_effects = update_bullets(bullets, creatures, visible_walls, 1/60, camera_x, camera_y)
         update_burning_creatures(creatures)
         update_poison_effects(creatures)

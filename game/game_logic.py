@@ -63,6 +63,43 @@ def update_camera(players, game_width, game_height):
     camera_y = players[0].y - game_height // 2
     return camera_x, camera_y
 
-def cleanup_dead_creatures(creatures):
-    """Remove dead creatures from the list."""
-    creatures[:] = [c for c in creatures if c.hp > 0] 
+def award_xp_shared(players, total_xp, alive_only=False):
+    """Split total_xp evenly among players. If alive_only=True, only alive players share."""
+    if alive_only:
+        targets = [p for p in players if not p.dead]
+    else:
+        targets = players
+
+    if not targets or total_xp <= 0:
+        return
+
+    # Integer-safe split with remainder distribution
+    share = total_xp // len(targets)
+    remainder = total_xp % len(targets)
+
+    for i, p in enumerate(targets):
+        p.gain_xp(share + (1 if i < remainder else 0))
+
+
+def cleanup_dead_creatures(creatures, players):
+    """
+    Award XP for dead creatures and remove them from the list.
+    Returns number of creatures removed (optional).
+    """
+    removed = 0
+    i = 0
+    while i < len(creatures):
+        c = creatures[i]
+        if c.hp <= 0:
+            # Award XP once
+            if not getattr(c, "xp_awarded", False):
+                xp = getattr(c, "xp_value", 0)
+                award_xp_shared(players, xp, alive_only=False)  # flip to False if you want everyone to share
+                c.xp_awarded = True
+
+            # Remove creature
+            creatures.pop(i)
+            removed += 1
+            continue
+        i += 1
+    return removed
