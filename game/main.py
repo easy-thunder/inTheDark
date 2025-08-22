@@ -12,7 +12,7 @@ from game.player import Player
 from game.ui import draw_world, draw_creatures, draw_bullets, draw_splash_effects, draw_stats_ui, draw_xp_bar, draw_game_over, draw_darkness_overlay
 from game.input_handler import handle_events, get_player_movement, is_fire_pressed
 from game.game_logic import update_players, handle_revival, apply_tether_mechanic, update_camera, cleanup_dead_creatures
-from game.helpers.ui_helpers.pause import pause_loop, shift_time_references
+from game.helpers.menus.pause import pause_loop, shift_time_references
 pygame.init()
 
 
