@@ -156,7 +156,7 @@ def main():
         pygame.display.flip()
         if pause_requested:
             pause_started = pygame.time.get_ticks()
-            result = pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="PAUSED")
+            result = pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="")
             if result == "quit":
                 running = False
                 break
