@@ -5,9 +5,10 @@ def handle_events(players, player_weapon_indices, show_creature_hp, ability_acti
     Handle all pygame events.
     
     Returns:
-        Tuple of (running, show_creature_hp, player_weapon_indices)
+        Tuple of (running, show_creature_hp, player_weapon_indices, player_ability_indices, caps_lock_on, pause_requested)
     """
     running = True
+    pause_requested = False
     
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -15,9 +16,11 @@ def handle_events(players, player_weapon_indices, show_creature_hp, ability_acti
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
-            if event.key == pygame.K_CAPSLOCK:
+            elif event.key == pygame.K_p:                 
+                pause_requested = True                    
+            elif event.key == pygame.K_CAPSLOCK:
                 caps_lock_on[0] = not caps_lock_on[0]
-            # --- Weapon switching ---
+           
             elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]:
                 idx = event.key - pygame.K_1
                 if caps_lock_on[0]:
@@ -26,31 +29,30 @@ def handle_events(players, player_weapon_indices, show_creature_hp, ability_acti
                 else:
                     if len(players[0].character.weapons) > idx:
                         player_weapon_indices[0] = idx
-            # --- Toggle creature HP bars ---
+           
             elif event.key == pygame.K_h:
                 show_creature_hp = not show_creature_hp
-            # --- Reloading ---
+           
             elif event.key == pygame.K_r:
                 for player in players:
                     player.reload_weapon(player_weapon_indices[players.index(player)])
-            # --- Ability activation ---
+           
             elif event.key == pygame.K_f:
                 if ability_active is not None:
                     ability_active[0] = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left click
-                # No firing logic here - handled in main loop
+            if event.button == 1:
                 pass
         elif event.type == pygame.MOUSEBUTTONUP:
-            if event.button == 1:  # Left click released
-                # Reset warm-up when fire button is released
+            if event.button == 1:
                 for player in players:
                     for weapon in player.character.weapons:
                         if weapon.uncommon.warm_up_time:
                             weapon.is_warming_up = False
                             weapon.warm_up_start = None
     
-    return running, show_creature_hp, player_weapon_indices, player_ability_indices, caps_lock_on
+    return running, show_creature_hp, player_weapon_indices, player_ability_indices, caps_lock_on, pause_requested
+
 
 def get_player_movement(players):
     """
@@ -61,13 +63,11 @@ def get_player_movement(players):
     """
     keys = pygame.key.get_pressed()
     
-    # --- Input for Player 1 (WASD) ---
     move_x1 = (keys[pygame.K_d]) - (keys[pygame.K_a])
     move_y1 = (keys[pygame.K_s]) - (keys[pygame.K_w])
     dx1 = move_x1 * players[0].speed
     dy1 = move_y1 * players[0].speed
     
-    # --- Input for Player 2 (Arrow keys) ---
     dx2 = dy2 = 0
     if len(players) > 1:
         move_x2 = (keys[pygame.K_RIGHT]) - (keys[pygame.K_LEFT])
