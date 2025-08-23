@@ -322,6 +322,8 @@ class SkillTreeSubscreen:
         # Title
         title = self.font_title.render(self.title, True, (255, 255, 255))
         screen.blit(title, (w // 2 - title.get_width() // 2, 60))
+        self._draw_node_points_badge(screen, w)
+
 
         # Graph
         self._draw_edges(screen)
@@ -334,6 +336,29 @@ class SkillTreeSubscreen:
         # Footer
         hint = self.small.render("Click to invest • Drag to pan • Esc/Backspace to return", True, (210, 210, 210))
         screen.blit(hint, (w // 2 - hint.get_width() // 2, h - 42))
+
+    def _node_points(self) -> int:
+        return getattr(self.player, "node_points", 0) if self.player else 0
+
+    def _draw_node_points_badge(self, screen, w):
+        pts = self._node_points()
+        label = f"Node Points: {pts}"
+        # color dims when 0
+        fg = (255, 255, 255) if pts > 0 else (180, 180, 180)
+        bg = (40, 40, 40) if pts > 0 else (28, 28, 28)
+
+        text = self.small.render(label, True, fg)
+        pad_x, pad_y = 10, 6
+        badge_w = text.get_width() + pad_x * 2
+        badge_h = text.get_height() + pad_y * 2
+        # top-right corner under the title area
+        x = w - badge_w - 24
+        y = 60  # roughly aligned with the title
+
+        badge_rect = pygame.Rect(x, y, badge_w, badge_h)
+        pygame.draw.rect(screen, bg, badge_rect, border_radius=12)
+        pygame.draw.rect(screen, (200, 200, 200), badge_rect, 2, border_radius=12)
+        screen.blit(text, (x + pad_x, y + pad_y))
 
 
 # ------------------------------------------------------------
