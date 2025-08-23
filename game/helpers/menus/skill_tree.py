@@ -339,10 +339,8 @@ class SkillTreeSubscreen:
 # ------------------------------------------------------------
 # Wrapper helpers: create a subscreen or run an in-place loop
 # ------------------------------------------------------------
-def make_skill_tree_subscreen(profile_id: str, title: str = "Skill Tree") -> SkillTreeSubscreen:
-    """Return a subscreen instance (useful if your pause menu manages the loop)."""
-    return SkillTreeSubscreen(profile_id, title)
-
+def make_skill_tree_subscreen(profile_id: str, title: str = "Skill Tree", player=None) -> SkillTreeSubscreen:
+    return SkillTreeSubscreen(profile_id, title, player=player)
 
 def show_skill_tree(screen, w, h, clock, skill_tree=None, active_skills=None, current_player=None):
     subscreen = SkillTreeSubscreen(

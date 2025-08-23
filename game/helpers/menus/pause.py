@@ -52,7 +52,6 @@ def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="",curre
     labels = ["Resume", "Skill Tree", "Controls", "Quit"]
     selected = 0
     rects = _button_rects(SCREEN_WIDTH, start_y=180, gap=14, count=len(labels))
-    resolve_current_player=current_player
     smoke = SmokeLayer(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     # No loops inside subscreens. We'll hold one here when opened.
@@ -86,7 +85,7 @@ def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="",curre
                     elif choice == "Quit":
                         return "quit"
                     elif choice == "Skill Tree":
-                        active_subscreen = make_skill_tree_subscreen(profile_id="default")
+                        active_subscreen = make_skill_tree_subscreen(profile_id="default", player=current_player)
 
                     elif choice == "Controls":
                         active_subscreen = make_controls_subscreen()    
@@ -107,7 +106,7 @@ def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="",curre
                         elif label == "Quit":
                             return "quit"
                         elif label == "Skill Tree":
-                            active_subscreen = make_skill_tree_subscreen(profile_id="default")
+                            active_subscreen = make_skill_tree_subscreen(profile_id="default", player=current_player)
                             break
                         elif label == "Controls":
                             active_subscreen = make_controls_subscreen()

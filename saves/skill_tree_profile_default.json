@@ -10,8 +10,8 @@
       "node_level": 1
     },
     "ballistics": {
-      "owned": false,
-      "node_level": 0
+      "owned": true,
+      "node_level": 1
     },
     "heavy_armor": {
       "owned": false,
