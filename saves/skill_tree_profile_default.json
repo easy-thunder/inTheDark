@@ -1,0 +1,25 @@
+{
+  "profile_id": "default",
+  "nodes": {
+    "core_combat": {
+      "owned": true,
+      "node_level": 1
+    },
+    "vitality": {
+      "owned": true,
+      "node_level": 1
+    },
+    "ballistics": {
+      "owned": false,
+      "node_level": 0
+    },
+    "heavy_armor": {
+      "owned": false,
+      "node_level": 0
+    },
+    "pierce_shot": {
+      "owned": false,
+      "node_level": 0
+    }
+  }
+}

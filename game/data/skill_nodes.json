@@ -1,0 +1,63 @@
+[
+    {
+      "id": "core_combat",
+      "name": "Combat Core",
+      "core": true,
+      "associated_skills": ["Basic Attack"],
+      "type": "core",
+      "node_requirements": [],
+      "skill_requirements": [],
+      "max_level": 1,
+      "node_order": 0,
+      "end_node": false
+    },
+    {
+      "id": "vitality",
+      "name": "Vitality",
+      "core": false,
+      "associated_skills": ["+20 Max HP"],
+      "type": "survival",
+      "node_requirements": ["core_combat"],
+      "skill_requirements": [],
+      "max_level": 3,
+      "node_order": 1,
+      "end_node": false
+    },
+    {
+      "id": "ballistics",
+      "name": "Ballistics",
+      "core": false,
+      "associated_skills": ["+10% Bullet Damage"],
+      "type": "offense",
+      "node_requirements": ["core_combat"],
+      "skill_requirements": [],
+      "max_level": 3,
+      "node_order": 1,
+      "end_node": false
+    },
+    {
+      "id": "heavy_armor",
+      "name": "Heavy Armor",
+      "core": false,
+      "associated_skills": ["+2 Armor"],
+      "type": "survival",
+      "node_requirements": ["vitality"],
+      "skill_requirements": [],
+      "max_level": 2,
+      "node_order": 2,
+      "end_node": false
+    },
+    {
+      "id": "pierce_shot",
+      "name": "Pierce Shot",
+      "core": false,
+      "associated_skills": ["Bullets pierce 1 target"],
+      "type": "offense",
+      "node_requirements": ["ballistics"],
+      "skill_requirements": [],
+      "max_level": 1,
+      "node_order": 2,
+      "end_node": true
+    }
+  ]
+  

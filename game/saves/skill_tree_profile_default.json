@@ -1,0 +1,8 @@
+{
+    "profile_id": "default",
+    "nodes": {
+      "core_combat": { "owned": true, "node_level": 1 },
+      "vitality":    { "owned": false, "node_level": 0 },
+      "ballistics":  { "owned": false, "node_level": 0 }
+    }
+  }

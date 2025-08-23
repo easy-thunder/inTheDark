@@ -14,6 +14,9 @@ class Player:
         self.level = 1
         self.xp_to_next = 100
         self.last_xp_time = pygame.time.get_ticks()
+
+        self.node_points = 0          # unspent node points
+        self.spent_node_points = 0    # optional: useful for UI/stats
         # Ability points
         self.ability_points = character.ability_points
         # Armor and regen
@@ -39,7 +42,8 @@ class Player:
             self.dead = True
             self.time_of_death = pygame.time.get_ticks()
             self.revive_progress = 0
-    
+
+
     def move(self, dx, dy, walls):
         if self.dead:
             return
@@ -71,6 +75,7 @@ class Player:
         while self.xp >= self.xp_to_next:
             self.xp -= self.xp_to_next
             self.level += 1
+            self.node_points += 1      # <<< NEW: award a node point
             self.xp_to_next += 100
     
     def update_xp(self):
@@ -80,6 +85,23 @@ class Player:
         if now - self.last_xp_time >= 10000:  # 10 seconds
             self.gain_xp(1)
             self.last_xp_time = now
+
+
+    def can_spend_node_point(self) -> bool:
+        return self.node_points > 0
+
+    def spend_node_point(self) -> bool:
+        """Spend one point if available; returns True on success."""
+        if self.node_points > 0:
+            self.node_points -= 1
+            self.spent_node_points += 1
+            return True
+        return False
+
+    def refund_node_point(self, n: int = 1):
+        """Optional: if you add respecs later."""
+        self.node_points += n
+        self.spent_node_points = max(0, self.spent_node_points - n)
     
     def regen(self):
         if self.dead:

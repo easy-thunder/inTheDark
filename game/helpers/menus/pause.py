@@ -5,6 +5,7 @@ from typing import Protocol, Optional
 
 from game.helpers.menus.skill_tree import make_skill_tree_subscreen
 from game.helpers.menus.controls_menu import make_controls_subscreen
+# from game.data.skill_nodes import NODES
 
 class PauseSubscreen(Protocol):
     def handle_event(self, event: pygame.event.Event) -> bool:
@@ -45,17 +46,13 @@ def _draw_buttons(screen, rects, labels, selected_idx):
                             r.centery - label.get_height() // 2))
 
 
-_DEFAULT_SKILL_TREE = {
-    1: ["Vitality", "Ballistics", "Pyromancy"],
-    2: ["Heavy Armor", "Pierce Shot", "Fire Bloom"],
-    3: ["Juggernaut", "Splinter Rounds", "Inferno"],
-}
 
-def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text=""):
+
+def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text="",current_player=None):
     labels = ["Resume", "Skill Tree", "Controls", "Quit"]
     selected = 0
     rects = _button_rects(SCREEN_WIDTH, start_y=180, gap=14, count=len(labels))
-
+    resolve_current_player=current_player
     smoke = SmokeLayer(SCREEN_WIDTH, SCREEN_HEIGHT)
 
     # No loops inside subscreens. We'll hold one here when opened.
@@ -89,9 +86,10 @@ def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text=""):
                     elif choice == "Quit":
                         return "quit"
                     elif choice == "Skill Tree":
-                        active_subscreen = make_skill_tree_subscreen()  # NEW
+                        active_subscreen = make_skill_tree_subscreen(profile_id="default")
+
                     elif choice == "Controls":
-                        active_subscreen = make_controls_subscreen()     # NEW
+                        active_subscreen = make_controls_subscreen()    
 
             elif event.type == pygame.MOUSEMOTION:
                 mx, my = event.pos
@@ -109,7 +107,7 @@ def pause_loop(screen, SCREEN_WIDTH, SCREEN_HEIGHT, clock, overlay_text=""):
                         elif label == "Quit":
                             return "quit"
                         elif label == "Skill Tree":
-                            active_subscreen = make_skill_tree_subscreen()
+                            active_subscreen = make_skill_tree_subscreen(profile_id="default")
                             break
                         elif label == "Controls":
                             active_subscreen = make_controls_subscreen()
