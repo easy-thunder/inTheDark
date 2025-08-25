@@ -14,8 +14,8 @@
       "node_level": 1
     },
     "heavy_armor": {
-      "owned": false,
-      "node_level": 0
+      "owned": true,
+      "node_level": 1
     },
     "pierce_shot": {
       "owned": false,

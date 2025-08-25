@@ -40,7 +40,7 @@ BRAINSTORM
                 first level allows you to walk through walls.
                 second level allows you to walk through creature(and be undamaged).
                 third level damages creatures as you walk through them(should make creatures run from player).
-            e. 
+            
         B. Crowd control:
             a. Wall
                 spawn wall with time limit
@@ -64,5 +64,61 @@ BRAINSTORM
                 roots multiple enemies that step on it. as level increases get more enemies it stops
 
         C. Defensive --deflection for shield --Armor for physical --shield recharge --max shield --hp regen --life steal 
-            a. 
+            a. Basic stat boosts
+            b. Bolt that steals life(click)/ cone that steals life(click)/ aura that steals life(toggle)
+            c. Shield discharge will damage enemies around character
+            d. Ability that reflects damage at the attacker for a period of time
+            e. spawn a pool that heals the player while staying in it
+            f. spawn pool that heals shields quickly
+            g. pool that adds greater defense
+
+            h. Shield discharge(remove shields)
+            i. Damaging effect when Shield is destroyed
+            j. Abilities that discharge your Shield to hurt others.
+            k. Over Shield
+            l. Invisibility
+            o. Decoy(zombies go after decoy instead if closer)
+            m. shield heal
+        D. Offensive --armor_pierce --damage --disruption --crit_chance --crit_damage --attack_speed
+            a. Basic stat boosts
+            b. pools for basic stat boosts
+            c. combined pool effects
+            d. All attacks crit
+            e. Double your bullets
+            f. all bullets bounce
+            g. Ridiculous range
+            h. bolts with various elements
+            i. 
+
+
+        E. Misk
+            a. Pacify a creature(level dependent)
+            b. Enrage creature to attack other creatures
+            c. Make creature follow you and help you
+            d. unlock various levels for lockpicking(maybe should be tied to a skill)
+
+
+        F. Craft: (maybe should be tied to a skill)
+            a. Craft various robot followoers
+            b. craft various turrets
+            c. craft walls of varrying strength(already had this idea above in crowd-control)
+            d. craft different weapons from parts and if have skills
+            e. reinforce base walls
+            f. Craft various base parts
+            g. Build water generators
+            h. build farms
+            i. build mines
+
+        G. social 
+            a. Get better prices
+            b. able to convince people to follow you.
+            c. recruit people to your base to fullfill various roles
+            d. Persuade for unique dialog options
+            
+
+        H. luck:
+
+
+
+            
                 
