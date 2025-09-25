@@ -48,6 +48,7 @@ This ensures all imports work correctly.
 - "space" key or left click to fire weapons
 - "R" to reload
 - 1-6 to swap weapons
+- "p" to pause
 
 ---
 

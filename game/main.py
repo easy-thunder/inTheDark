@@ -113,7 +113,7 @@ def main():
                 if math.hypot(x - px, y - py) >= min_spawn_distance:
                     
                     pool_index = 0 if minutes < 1 else 1
-                    pool = CREATURE_DIFFICULTY_POOLS[3] # JAKE CHANGE THIS TO POOL_INDEX AFTER TESTING
+                    pool = CREATURE_DIFFICULTY_POOLS[pool_index] # JAKE CHANGE THIS TO POOL_INDEX AFTER TESTING or 3 FOR TESTING
                     creature_class, kwargs = random.choice(pool)
                     creatures.append(creature_class(x=x, y=y, **kwargs))
                     break

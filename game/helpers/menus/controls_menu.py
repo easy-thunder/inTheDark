@@ -15,7 +15,7 @@ class ControlsSubscreen:
             ("1–6", "Switch Weapon / Ability"),
             ("Caps Lock", "Toggle Weapon/Ability Mode"),
             ("H", "Toggle Creature HP Bars"),
-            ("P / Esc", "Pause Menu"),
+            ("P", "Pause Menu"),
         ]
 
     def handle_event(self, event: pygame.event.Event) -> bool:
